@@ -1,0 +1,246 @@
+{
+  "name": "TrendRadar信号处理流程",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "trendradar",
+        "responseMode": "onReceived",
+        "responseData": "allEntries"
+      },
+      "id": "webhook-node",
+      "name": "接收TrendRadar信号",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const signal = items[0].json;\n\n// 提取关键信息\nconst processed = {\n  title: signal.title || '无标题',\n  source: signal.source || '未知来源',\n  url: signal.url || '',\n  keywords: signal.keywords || [],\n  content: signal.content || '',\n  timestamp: new Date().toISOString(),\n  relevance_score: signal.relevance_score || 0\n};\n\nreturn [{json: processed}];"
+      },
+      "id": "process-signal",
+      "name": "处理信号数据",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json[\"relevance_score\"]}}",
+              "operation": "largerEqual",
+              "value2": 0.6
+            }
+          ]
+        }
+      },
+      "id": "filter-relevance",
+      "name": "过滤相关性",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/api/summarize",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "url",
+              "value": "={{$json[\"url\"]}}"
+            },
+            {
+              "name": "content",
+              "value": "={{$json[\"content\"]}}"
+            },
+            {
+              "name": "language",
+              "value": "zh"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "call-bestblogs",
+      "name": "调用BestBlogs生成摘要",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "functionCode": "const signal = items[0].json;\nconst summary = items[0].json.summary || '摘要生成失败';\nconst score = items[0].json.score || 0;\n\n// 构建钉钉消息\nconst dingtalkMessage = {\n  msgtype: 'markdown',\n  markdown: {\n    title: `📡 ${signal.title}`,\n    text: `## 📡 TrendRadar 信号通知\\n\\n` +\n          `**标题**: ${signal.title}\\n\\n` +\n          `**来源**: ${signal.source}\\n\\n` +\n          `**关键词**: ${signal.keywords.join(', ')}\\n\\n` +\n          `**AI评分**: ${score}/10\\n\\n` +\n          `**摘要**:\\n${summary}\\n\\n` +\n          `[查看原文](${signal.url})`\n  }\n};\n\nreturn [{json: dingtalkMessage}];"
+      },
+      "id": "format-dingtalk",
+      "name": "格式化钉钉消息",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{$env[\"DINGTALK_WEBHOOK\"]}}",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "msgtype",
+              "value": "={{$json[\"msgtype\"]}}"
+            },
+            {
+              "name": "markdown",
+              "value": "={{JSON.stringify($json[\"markdown\"])}}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "send-dingtalk",
+      "name": "发送钉钉通知",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{$env[\"EMAIL_USER\"]}}",
+        "toEmail": "={{$env[\"EMAIL_TO\"]}}",
+        "subject": "[TrendRadar] {{signal.title}}",
+        "text": "信号标题: {{signal.title}}\n\n来源: {{signal.source}}\n\n关键词: {{signal.keywords}}\n\nAI摘要: {{summary}}\n\n原文链接: {{signal.url}}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "send-email",
+      "name": "发送邮件通知",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/articles",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "={{signal.title}}"
+            },
+            {
+              "name": "url",
+              "value": "={{signal.url}}"
+            },
+            {
+              "name": "summary",
+              "value": "={{summary}}"
+            },
+            {
+              "name": "score",
+              "value": "={{score}}"
+            },
+            {
+              "name": "source",
+              "value": "={{signal.source}}"
+            },
+            {
+              "name": "keywords",
+              "value": "={{JSON.stringify(signal.keywords)}}"
+            }
+          ]
+        }
+      },
+      "id": "save-to-bestblogs",
+      "name": "保存到BestBlogs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1250, 400]
+    }
+  ],
+  "connections": {
+    "接收TrendRadar信号": {
+      "main": [
+        [
+          {
+            "node": "处理信号数据",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "处理信号数据": {
+      "main": [
+        [
+          {
+            "node": "过滤相关性",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "过滤相关性": {
+      "main": [
+        [
+          {
+            "node": "调用BestBlogs生成摘要",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "调用BestBlogs生成摘要": {
+      "main": [
+        [
+          {
+            "node": "格式化钉钉消息",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "发送邮件通知",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "保存到BestBlogs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "格式化钉钉消息": {
+      "main": [
+        [
+          {
+            "node": "发送钉钉通知",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

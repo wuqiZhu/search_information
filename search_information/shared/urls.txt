@@ -1,0 +1,9 @@
+# OneFileLLM 批量转换URL列表
+# 每行一个URL，支持网页和GitHub仓库
+# 使用方法: 将此文件放在 onelllm 目录下，运行 batch_convert.bat
+
+# 示例: 嵌入式Linux相关资源
+https://www.kernel.org/doc/html/latest/
+https://elinux.org/Main_Page
+https://docs.u-boot.org/en/latest/
+https://docs.yoctoproject.org/

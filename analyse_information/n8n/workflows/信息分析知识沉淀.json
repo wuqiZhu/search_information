@@ -1,0 +1,130 @@
+{
+  "name": "信息分析与知识沉淀（金字塔模型）",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "analyze-info",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-receive",
+      "name": "接收TrendRadar信号",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "command": "cd {{ $env.ANALYZER_PATH || 'C:\\Users\\zhuxiangbo\\Desktop\\project\\analyse_information' }} && python analyzer/pipeline.py --webhook-data \"{{ JSON.stringify($json) }}\""
+      },
+      "id": "run-pipeline",
+      "name": "运行AI分析Pipeline",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.status }}",
+              "operation": "equal",
+              "value2": "success"
+            }
+          ]
+        }
+      },
+      "id": "check-relevant",
+      "name": "是否相关(score>=6)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "channel": "{{ $env.DINGTALK_CHANNEL }}",
+        "text": "## 📡 新信息已分析\n\n**标题**: {{ $('接收TrendRadar信号').item.json.title }}\n**分类**: {{ $json.category }}\n**相关性**: {{ $json.score }}/10\n\n> {{ $json.reason }}\n\n[查看原文]({{ $('接收TrendRadar信号').item.json.url }})"
+      },
+      "id": "notify-success",
+      "name": "钉钉通知-相关文章",
+      "type": "n8n-nodes-base.dingtalk",
+      "typeVersion": 1,
+      "position": [1000, 200],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'analyzed', category: $json.category, score: $json.score, translation: $json.translation ? $json.translation.substring(0, 200) + '...' : '' }) }}"
+      },
+      "id": "respond-success",
+      "name": "返回分析结果",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1000, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'skipped', reason: $json.reason || '不相关或已处理' }) }}"
+      },
+      "id": "respond-skip",
+      "name": "返回跳过",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1000, 500]
+    }
+  ],
+  "connections": {
+    "接收TrendRadar信号": {
+      "main": [
+        [
+          {
+            "node": "运行AI分析Pipeline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "运行AI分析Pipeline": {
+      "main": [
+        [
+          {
+            "node": "是否相关(score>=6)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "是否相关(score>=6)": {
+      "main": [
+        [
+          {
+            "node": "钉钉通知-相关文章",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "返回分析结果",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "返回跳过",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

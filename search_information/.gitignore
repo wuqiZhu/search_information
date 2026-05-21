@@ -1,0 +1,48 @@
+# 敏感配置文件
+.env
+!.env.example
+
+# 各子项目的 .env（已迁移到根目录统一管理）
+n8n/.env
+bestblogs/.env
+TrendRadar/docker/.env
+
+# 数据文件
+data/
+*/data/
+**/data/
+
+# 日志文件
+logs/
+*/logs/
+**/logs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# n8n 数据
+n8n/data/
+
+# 知识库输出
+knowledge_base/
+
+# 信号存储
+trendradar/data/signals/

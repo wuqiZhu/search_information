@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  bestblogs:
+    image: ghcr.io/bestblogs/bestblogs:latest
+    container_name: bestblogs
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+      - ./logs:/app/logs
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_PATH=/app/data/bestblogs.db
+      - LOG_LEVEL=info
+      - TZ=Asia/Shanghai
+      # AI配置 - 使用DeepSeek API
+      - AI_PROVIDER=openai
+      - OPENAI_API_BASE=https://api.deepseek.com/v1
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # RSS配置
+      - RSS_PARSER_TIMEOUT=30000
+      - RSS_MAX_CONCURRENT=5
+      # 缓存配置
+      - CACHE_TTL=3600
+      - CACHE_MAX_SIZE=1000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - bestblogs-net
+    labels:
+      - "com.bestblogs.description=AI摘要助手"
+      - "com.bestblogs.version=latest"
+
+  # PostgreSQL数据库(可选，用于生产环境)
+  postgres:
+    image: postgres:15-alpine
+    container_name: bestblogs-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=bestblogs
+      - POSTGRES_USER=bestblogs
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-bestblogs123}
+      - TZ=Asia/Shanghai
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - bestblogs-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bestblogs"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis缓存(可选，用于高性能场景)
+  redis:
+    image: redis:7-alpine
+    container_name: bestblogs-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-bestblogs123}
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - bestblogs-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  bestblogs-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:

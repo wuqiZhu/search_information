@@ -1,0 +1,8 @@
+.env
+shared/logs/
+shared/data/
+knowledge_base/raw/
+knowledge_base/analyzed/
+knowledge_base/translated/
+__pycache__/
+*.pyc
