@@ -1,4 +1,4 @@
 @echo off
 chcp 65001 >nul
-cd /d C:\Users\zhuxiangbo\Desktop\project\search_information\n8n
+cd /d "%~dp0"
 docker-compose up -d

@@ -31,7 +31,7 @@ analyzer:
     translated_path: "./knowledge_base/translated"
     retention_days: 90
 
-  rss_source: "C:/Users/zhuxiangbo/Desktop/project/search_information/trendradar/config.yaml"
+  rss_source: "../../search_information/TrendRadar/config.yaml"
 
   relevance:
     keywords:
