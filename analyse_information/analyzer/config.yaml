@@ -32,22 +32,10 @@ analyzer:
     retention_days: 90
 
   rss_source: "../../search_information/TrendRadar/config.yaml"
+  find_job_source: "../../find_job/config.yaml"
 
   relevance:
     keywords:
-      job_hunting:
-        - "嵌入式Linux实习"
-        - "C++开发实习"
-        - "2026校招提前批"
-        - "嵌入式校招"
-        - "BSP工程师"
-        - "实习僧"
-        - "Boss直聘"
-      interview:
-        - "嵌入式面经2026"
-        - "C++面经2026"
-        - "Linux系统编程面试题"
-        - "手撕代码嵌入式"
       policy:
         - "应届生租房补贴"
         - "大学生就业补贴江西"
@@ -84,12 +72,6 @@ analyzer:
     min_score: 6
 
   categories:
-    - name: "01-求职招聘"
-      keywords: ["实习", "校招", "招聘", "BSP工程师", "嵌入式工程师", "简历", "面试"]
-      weight: 1.5
-    - name: "02-面经题库"
-      keywords: ["面经", "面试题", "笔试", "手撕代码", "LeetCode", "八股文"]
-      weight: 1.2
     - name: "03-政策福利"
       keywords: ["补贴", "优惠", "学生", "GitHub Student", "GSoC", "人才引进"]
       weight: 1.0
