@@ -10,25 +10,29 @@ source: "{url}"
 date: {date}
 category: "{category}"
 score: {score}
+difficulty: "{difficulty}"
+action: "{action}"
 tags: [{tags}]
 ---
 
-# {title}
+# {star} {title}
 
-## 一句话总结
+> **评分**: {score}/10 | **分类**: {category} | **难度**: {difficulty}
+
+## 📌 一句话总结
 
 {summary}
 
-## 大白话翻译
+## 🏷️ 快速信息
 
-{translation}
-
-## 原始信息
-
+- **行动建议**: {action}
+- **难度等级**: {difficulty}
 - **来源**: [{url}]({url})
 - **采集时间**: {date}
-- **相关性评分**: {score}/10
-- **分类**: {category}
+
+## 📝 结构化分析
+
+{translation}
 
 ## 关键要点
 
@@ -55,7 +59,11 @@ class KnowledgeBuilder:
         category = data.get("category", "00-收件箱")
         score = data.get("score", 0)
         translation = data.get("translation", "")
+        difficulty = data.get("difficulty", "")
+        action = data.get("action", "")
         tags = self._extract_tags(data)
+
+        star = "🔥" if score >= 8 else "⭐" if score >= 6 else ""
 
         summary = self._extract_summary(translation)
         key_points = self._extract_key_points(translation)
@@ -67,6 +75,9 @@ class KnowledgeBuilder:
             date=datetime.now().strftime("%Y-%m-%d"),
             category=category,
             score=score,
+            difficulty=difficulty,
+            action=action,
+            star=star,
             tags=", ".join([f'"{t}"' for t in tags]),
             summary=summary,
             translation=translation,

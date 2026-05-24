@@ -31,39 +31,57 @@ def generate_daily_digest(db_path: str = "./shared/data/analyzer.db", output_dir
     success = [a for a in articles if a["status"] == "success"]
     not_relevant = [a for a in articles if a["status"] == "not_relevant"]
 
+    high_score = [a for a in success if a.get("score", 0) >= 8]
+    medium_score = [a for a in success if 6 <= a.get("score", 0) < 8]
+
     lines = [
         "---",
-        f'title: "每日摘要 {today}"',
+        f'title: "每日简报 {today}"',
         f"date: {today}",
-        "type: digest",
-        "tags: [digest, daily-summary]",
+        "type: daily-briefing",
+        "tags: [briefing, daily]",
         "---",
         "",
-        f"# 每日摘要 {today}",
+        f"# 📰 {today} 技术简报",
         "",
-        f"今日共处理 **{len(articles)}** 篇文章，其中 **{len(success)}** 篇成功沉淀，**{len(not_relevant)}** 篇被过滤。",
+        f"今日共处理 **{len(articles)}** 个信号，其中 **{len(success)}** 个成功沉淀，**{len(not_relevant)}** 个被过滤。",
         "",
     ]
 
-    if success:
-        lines.append("## 今日精选\n")
-        for i, a in enumerate(success, 1):
+    if high_score:
+        lines.append("## 🔥 今日必看")
+        lines.append("")
+        for i, a in enumerate(high_score, 1):
             score = a.get("score", 0)
             category = a.get("category", "")
             title = a.get("title", "")
-            url = a.get("url", "")
             reason = a.get("reason", "")
             obsidian_path = a.get("obsidian_path", "")
 
-            star = "⭐" if score >= 8 else ""
-            lines.append(f"### {i}. {star} {title}")
+            lines.append(f"### {i}. {title}")
             lines.append(f"- **评分**: {score:.1f}/10 | **分类**: {category}")
-            lines.append(f"- **摘要**: {reason}")
-            lines.append(f"- **原文**: [{url}]({url})")
+            if reason:
+                lines.append(f"- **一句话**: {reason}")
             if obsidian_path:
                 filename = Path(obsidian_path).stem
                 lines.append(f"- **笔记**: [[{filename}]]")
             lines.append("")
+
+    if medium_score:
+        lines.append("## ⭐ 值得关注")
+        lines.append("")
+        for i, a in enumerate(medium_score[:5], 1):
+            score = a.get("score", 0)
+            category = a.get("category", "")
+            title = a.get("title", "")
+            obsidian_path = a.get("obsidian_path", "")
+
+            if obsidian_path:
+                filename = Path(obsidian_path).stem
+                lines.append(f"{i}. **[{score:.1f}]** [{category}] {title} → [[{filename}]]")
+            else:
+                lines.append(f"{i}. **[{score:.1f}]** [{category}] {title}")
+        lines.append("")
 
     category_counts = {}
     for a in success:
@@ -71,9 +89,11 @@ def generate_daily_digest(db_path: str = "./shared/data/analyzer.db", output_dir
         category_counts[cat] = category_counts.get(cat, 0) + 1
 
     if category_counts:
-        lines.append("## 分类统计\n")
+        lines.append("## 📊 分类统计")
+        lines.append("")
         for cat, count in sorted(category_counts.items(), key=lambda x: -x[1]):
-            lines.append(f"- {cat}: {count} 篇")
+            bar = "█" * min(count, 10)
+            lines.append(f"- {cat}: {bar} ({count})")
         lines.append("")
 
     lines.append("---")
@@ -84,10 +104,10 @@ def generate_daily_digest(db_path: str = "./shared/data/analyzer.db", output_dir
 
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
-    filepath = output_path / f"00-收件箱" / f"{today}_每日摘要.md"
+    filepath = output_path / f"00-收件箱" / f"{today}_每日简报.md"
     filepath.parent.mkdir(parents=True, exist_ok=True)
     filepath.write_text(digest_content, encoding="utf-8")
-    logger.info("每日摘要已生成: %s", filepath)
+    logger.info("每日简报已生成: %s", filepath)
 
     return str(filepath)
 
@@ -101,6 +121,7 @@ def generate_weekly_digest(db_path: str = "./shared/data/analyzer.db", output_di
     today = datetime.now()
     week_start = today - timedelta(days=today.weekday())
     week_start_str = week_start.strftime("%Y-%m-%d")
+    week_end = today.strftime("%Y-%m-%d")
 
     rows = conn.execute("""
         SELECT url, title, status, score, category, reason, obsidian_path, created_at
@@ -115,32 +136,37 @@ def generate_weekly_digest(db_path: str = "./shared/data/analyzer.db", output_di
         return ""
 
     articles = [dict(r) for r in rows]
-    week_end = today.strftime("%Y-%m-%d")
 
     lines = [
         "---",
-        f'title: "每周摘要 {week_start_str} ~ {week_end}"',
+        f'title: "每周简报 {week_start_str} ~ {week_end}"',
         f"date: {week_end}",
-        "type: weekly-digest",
-        "tags: [digest, weekly-summary]",
+        "type: weekly-briefing",
+        "tags: [briefing, weekly]",
         "---",
         "",
-        f"# 每周摘要 {week_start_str} ~ {week_end}",
+        f"# 📅 每周简报 {week_start_str} ~ {week_end}",
         "",
         f"本周共成功沉淀 **{len(articles)}** 篇文章。",
         "",
-        "## Top 10 精选\n",
     ]
 
+    lines.append("## 🔥 本周 Top 10")
+    lines.append("")
     for i, a in enumerate(articles[:10], 1):
         score = a.get("score", 0)
         category = a.get("category", "")
         title = a.get("title", "")
+        reason = a.get("reason", "")
         obsidian_path = a.get("obsidian_path", "")
-        lines.append(f"{i}. **[{score:.1f}]** [{category}] {title}")
+        
+        lines.append(f"### {i}. {title}")
+        lines.append(f"- **评分**: {score:.1f}/10 | **分类**: {category}")
+        if reason:
+            lines.append(f"- **一句话**: {reason[:80]}")
         if obsidian_path:
             filename = Path(obsidian_path).stem
-            lines.append(f"   [[{filename}]]")
+            lines.append(f"- **笔记**: [[{filename}]]")
         lines.append("")
 
     category_counts = {}
@@ -149,16 +175,18 @@ def generate_weekly_digest(db_path: str = "./shared/data/analyzer.db", output_di
         category_counts[cat] = category_counts.get(cat, 0) + 1
 
     if category_counts:
-        lines.append("## 分类分布\n")
+        lines.append("## 📊 分类分布")
+        lines.append("")
         for cat, count in sorted(category_counts.items(), key=lambda x: -x[1]):
-            bar = "█" * count
+            bar = "█" * min(count, 15)
             lines.append(f"- {cat}: {bar} ({count})")
         lines.append("")
 
     avg_score = sum(a.get("score", 0) for a in articles) / len(articles) if articles else 0
     max_score = max(a.get("score", 0) for a in articles) if articles else 0
 
-    lines.append("## 统计数据\n")
+    lines.append("## 📈 统计数据")
+    lines.append("")
     lines.append(f"- 平均评分: {avg_score:.1f}")
     lines.append(f"- 最高评分: {max_score:.1f}")
     lines.append(f"- 文章总数: {len(articles)}")
@@ -169,9 +197,9 @@ def generate_weekly_digest(db_path: str = "./shared/data/analyzer.db", output_di
     digest_content = "\n".join(lines)
 
     output_path = Path(output_dir)
-    filepath = output_path / "00-收件箱" / f"{week_end}_每周摘要.md"
+    filepath = output_path / "00-收件箱" / f"{week_end}_每周简报.md"
     filepath.parent.mkdir(parents=True, exist_ok=True)
     filepath.write_text(digest_content, encoding="utf-8")
-    logger.info("每周摘要已生成: %s", filepath)
+    logger.info("每周简报已生成: %s", filepath)
 
     return str(filepath)
