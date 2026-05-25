@@ -6,6 +6,7 @@
 __pycache__/
 *.pyc
 *.pyo
+*.egg-info/
 
 # 日志文件
 logs/
@@ -13,17 +14,31 @@ logs/
 
 # 数据文件
 data/
+**/data/
+
+# SQLite 数据库
+*.db
+*.db-wal
+*.db-shm
 
 # Obsidian 知识库
 knowledge_base/
 
+# n8n 数据
+n8n_data/
+.n8n/
+
 # IDE 配置
 .vscode/
 .idea/
+.trae/
 
 # 临时文件
 *.tmp
 *.bak
+
+# 个人隐私
+profile.json
 
 # 子仓库目录（不推送）
 find_job/

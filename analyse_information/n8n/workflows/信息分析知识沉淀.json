@@ -16,7 +16,7 @@
     },
     {
       "parameters": {
-        "command": "cd {{ $env.ANALYZER_PATH || 'C:\\Users\\zhuxiangbo\\Desktop\\project\\analyse_information' }} && python analyzer/pipeline.py --webhook-data \"{{ JSON.stringify($json) }}\""
+        "command": "cd {{ $env.ANALYZER_PATH || '/path/to/analyse_information' }} && python analyzer/pipeline.py --webhook-data \"{{ JSON.stringify($json) }}\""
       },
       "id": "run-pipeline",
       "name": "运行AI分析Pipeline",

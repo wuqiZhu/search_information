@@ -19,17 +19,19 @@ def load_rss_feeds() -> list:
             config = yaml.safe_load(f)
 
         rss_source = config.get("analyzer", {}).get("rss_source", "")
-        if rss_source and Path(rss_source).exists():
-            logger.info("从外部项目读取 RSS 源: %s", rss_source)
-            try:
-                with open(rss_source, "r", encoding="utf-8") as f:
-                    external_config = yaml.safe_load(f)
-                external_feeds = external_config.get("rss", {}).get("feeds", [])
-                if external_feeds:
-                    logger.info("从外部项目加载 %d 个 RSS 源", len(external_feeds))
-                    return external_feeds
-            except Exception as e:
-                logger.warning("读取外部 RSS 配置失败，回退到本地: %s", e)
+        if rss_source:
+            resolved_path = Path(__file__).parent / rss_source
+            if resolved_path.exists():
+                logger.info("从外部项目读取 RSS 源: %s", resolved_path)
+                try:
+                    with open(resolved_path, "r", encoding="utf-8") as f:
+                        external_config = yaml.safe_load(f)
+                    external_feeds = external_config.get("sources", {}).get("rss", [])
+                    if external_feeds:
+                        logger.info("从外部项目加载 %d 个 RSS 源", len(external_feeds))
+                        return external_feeds
+                except Exception as e:
+                    logger.warning("读取外部 RSS 配置失败，回退到本地: %s", e)
 
         return config.get("analyzer", {}).get("rss", {}).get("feeds", [])
     except Exception as e:

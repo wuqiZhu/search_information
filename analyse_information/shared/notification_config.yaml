@@ -1,0 +1,71 @@
+# 智能通知中心配置
+
+# 钉钉配置
+dingtalk:
+  webhook: "https://oapi.dingtalk.com/robot/send?access_token=YOUR_TOKEN"
+  secret: "SECYOUR_SECRET"
+
+# 时间窗口配置
+merge_window_minutes: 10
+
+# 优先级配置
+priority:
+  P0:
+    description: "紧急求职信息"
+    action: "立即推送"
+    emoji: "🔥"
+  P1:
+    description: "重要行业动态"
+    action: "汇总推送（每小时）"
+    emoji: "⭐"
+  P2:
+    description: "一般信息"
+    action: "每日简报"
+    emoji: "📌"
+  P3:
+    description: "系统状态"
+    action: "仅记录"
+    emoji: "ℹ️"
+
+# 通知渠道配置
+channels:
+  dingtalk:
+    enabled: true
+    max_messages_per_hour: 20
+    quiet_hours:
+      start: "23:00"
+      end: "07:00"
+  
+  email:
+    enabled: false
+    smtp_server: "smtp.example.com"
+    smtp_port: 587
+    username: "your_email@example.com"
+    password: "your_password"
+    from_address: "your_email@example.com"
+    to_address: "recipient@example.com"
+  
+  wechat:
+    enabled: false
+    app_id: "YOUR_APP_ID"
+    app_secret: "YOUR_APP_SECRET"
+    template_id: "YOUR_TEMPLATE_ID"
+
+# 去重配置
+deduplication:
+  enabled: true
+  max_hashes: 10000
+  cleanup_interval_hours: 24
+
+# 用户偏好学习
+preferences:
+  enabled: true
+  max_history: 100
+  learning_rate: 0.1
+
+# 日志配置
+logging:
+  level: "INFO"
+  file: "./logs/notification_center.log"
+  max_size_mb: 10
+  backup_count: 5

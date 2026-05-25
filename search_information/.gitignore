@@ -46,3 +46,11 @@ knowledge_base/
 
 # 信号存储
 trendradar/data/signals/
+
+# SQLite 数据库
+TrendRadar/output/**/*.db
+TrendRadar/output/**/*.db-wal
+TrendRadar/output/**/*.db-shm
+
+# Trae IDE
+.trae/

@@ -300,6 +300,49 @@ def print_report(results: list, logger, token_stats: dict = None):
     logger.info("=" * 60)
 
 
+def process_signals_dir(signals_dir: str, config: dict) -> tuple:
+    """从 TrendRadar 信号目录读取 JSON 文件并处理"""
+    logger = logging.getLogger("pipeline")
+    signals_path = Path(signals_dir)
+    
+    if not signals_path.exists():
+        logger.error("信号目录不存在: %s", signals_dir)
+        return [], {}
+    
+    # 读取所有 JSON 信号文件
+    signal_files = list(signals_path.glob("*.json"))
+    if not signal_files:
+        logger.info("信号目录为空: %s", signals_dir)
+        return [], {}
+    
+    logger.info("从信号目录读取 %d 个文件: %s", len(signal_files), signals_dir)
+    
+    # 提取 URL
+    urls = []
+    for sf in signal_files:
+        try:
+            with open(sf, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict) and "url" in data:
+                    urls.append(data["url"])
+                elif isinstance(data, list):
+                    for item in data:
+                        if isinstance(item, dict) and "url" in item:
+                            urls.append(item["url"])
+        except Exception as e:
+            logger.warning("读取信号文件失败: %s - %s", sf, e)
+    
+    if not urls:
+        logger.info("未找到有效 URL")
+        return [], {}
+    
+    # 去重
+    urls = list(dict.fromkeys(urls))
+    logger.info("提取到 %d 个唯一 URL", len(urls))
+    
+    return process_batch(urls, config)
+
+
 def main():
     parser = argparse.ArgumentParser(description="信息分析与知识沉淀 Pipeline")
     parser.add_argument("--url", type=str, help="单个 URL")
@@ -311,6 +354,7 @@ def main():
     parser.add_argument("--workers", type=int, default=3, help="并发线程数 (默认 3)")
 
     parser.add_argument("--rss", action="store_true", help="从 RSS 订阅源拉取并处理")
+    parser.add_argument("--signals-dir", type=str, help="从 TrendRadar 信号目录读取 JSON 文件")
     parser.add_argument("--search", type=str, help="搜索已沉淀的文章")
     parser.add_argument("--feedback", nargs=2, metavar=("URL", "TAG"), help="标记文章反馈 (URL useful/not_useful)")
     parser.add_argument("--preferences", action="store_true", help="查看用户偏好统计")
@@ -394,6 +438,11 @@ def main():
         data = json.loads(args.webhook_data)
         result = process_from_n8n_webhook(data, config)
         print(json.dumps(result, ensure_ascii=False, indent=2))
+    elif args.signals_dir:
+        results, token_stats = process_signals_dir(args.signals_dir, config)
+        if results:
+            print_report(results, logger, token_stats)
+        print(json.dumps(results, ensure_ascii=False, indent=2))
     elif args.rss:
         results, token_stats = process_rss(config)
         if results:
