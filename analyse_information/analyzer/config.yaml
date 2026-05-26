@@ -37,38 +37,23 @@ analyzer:
   relevance:
     keywords:
       policy:
-        - "应届生租房补贴"
-        - "大学生就业补贴江西"
+        - "大学生就业补贴"
         - "学生云服务器优惠"
         - "GitHub Student Pack"
       industry:
-        - "嵌入式行业新闻"
-        - "Linux内核新版本"
-        - "RISC-V进展"
-        - "Linux内核"
+        - "行业新闻"
+        - "技术进展"
       leverage:
-        - "开源之夏2026"
+        - "开源之夏"
         - "Google Summer of Code"
-        - "嵌入式竞赛2026"
-        - "景德镇人才引进2026"
+        - "技术竞赛"
       tech:
-        - "嵌入式"
-        - "BSP"
-        - "驱动"
-        - "RISC-V"
-        - "IoT"
-        - "设备树"
-        - "U-Boot"
-        - "交叉编译"
-        - "Yocto"
-        - "Buildroot"
-        - "GPIO"
-        - "I2C"
-        - "SPI"
-        - "UART"
-        - "RTOS"
-        - "FreeRTOS"
-        - "Zephyr"
+        - "Python"
+        - "JavaScript"
+        - "AI"
+        - "机器学习"
+        - "深度学习"
+        - "数据分析"
     min_score: 6
 
   categories:

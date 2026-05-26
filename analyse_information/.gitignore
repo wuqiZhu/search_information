@@ -9,7 +9,10 @@ build/
 .venv/
 venv/
 *.db
-knowledge_base/obsidian/
+knowledge_base/
+!knowledge_base/.gitkeep
+shared/data/
+shared/logs/
 n8n_data/
 .n8n/
 *.log
@@ -17,6 +20,9 @@ n8n_data/
 # 环境变量
 .env.local
 .env.production
+
+# 临时文件
+新建 文本文档.txt
 
 # IDE
 .idea/
