@@ -172,7 +172,7 @@ def translate_to_plain_language(content: str, api_key: str, api_base: str, track
                 "Content-Type": "application/json"
             },
             json={
-                "model": "deepseek-chat",
+                "model": os.environ.get('DEEPSEEK_MODEL', 'mimo-v2-flash'),
                 "messages": [
                     {"role": "system", "content": "你是一个技术翻译专家，擅长将复杂的技术内容翻译成普通人能理解的语言。"},
                     {"role": "user", "content": prompt}
