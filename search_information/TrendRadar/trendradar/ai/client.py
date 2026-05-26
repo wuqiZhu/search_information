@@ -50,18 +50,7 @@ class AIClient:
         messages: List[Dict[str, str]],
         **kwargs
     ) -> str:
-        global _call_count, _last_call_time
-
-        _call_count += 1
-        if _call_count > self.max_calls:
-            raise RuntimeError(f"已达到 AI 调用上限 ({self.max_calls})，防止过度消耗")
-
-        elapsed = time.time() - _last_call_time
-        if elapsed < self.min_interval:
-            time.sleep(self.min_interval - elapsed)
-        _last_call_time = time.time()
-
-        # 构建请求参数"""
+        """
         调用 AI 模型进行对话
 
         Args:
@@ -74,6 +63,17 @@ class AIClient:
         Raises:
             Exception: API 调用失败时抛出异常
         """
+        global _call_count, _last_call_time
+
+        _call_count += 1
+        if _call_count > self.max_calls:
+            raise RuntimeError(f"已达到 AI 调用上限 ({self.max_calls})，防止过度消耗")
+
+        elapsed = time.time() - _last_call_time
+        if elapsed < self.min_interval:
+            time.sleep(self.min_interval - elapsed)
+        _last_call_time = time.time()
+
         # 构建请求参数
         params = {
             "model": self.model,
