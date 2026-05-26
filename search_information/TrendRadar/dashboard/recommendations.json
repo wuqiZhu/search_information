@@ -1,0 +1,180 @@
+{
+  "generated_at": "2026-05-25T09:24:21.254767",
+  "user_preferences": {
+    "favorite_keywords": [],
+    "ignore_keywords": [],
+    "favorite_sources": [],
+    "ignore_sources": [],
+    "interest_patterns": []
+  },
+  "recommendations": [
+    {
+      "title": "圆桌对话：人才特种兵：“AI原生人才”与“产业老炮”的共生手册| 2026AI Partner·北京亦庄AI+产业大会",
+      "source": "36氪",
+      "url": "https://36kr.com/p/3821533415985283?f=rss",
+      "keywords": [
+        "DeepSeek 招聘",
+        "百度 招聘",
+        "OpenAI",
+        "Anthropic"
+      ],
+      "original_score": 1.0,
+      "personalized_score": 1,
+      "keyword_weights": {
+        "DeepSeek 招聘": 0,
+        "百度 招聘": 0,
+        "OpenAI": 0,
+        "Anthropic": 0
+      },
+      "source_weight": 0
+    },
+    {
+      "title": "圆桌对话：AI浓度与转化率：数字体验的实战增长法则",
+      "source": "36氪",
+      "url": "https://36kr.com/p/3821519307591811?f=rss",
+      "keywords": [
+        "腾讯 AI",
+        "华为 智能",
+        "AI产业 发展"
+      ],
+      "original_score": 1.0,
+      "personalized_score": 1,
+      "keyword_weights": {
+        "腾讯 AI": 0,
+        "华为 智能": 0,
+        "AI产业 发展": 0
+      },
+      "source_weight": 0
+    },
+    {
+      "title": "36氪首发 | 北大项目孵化，国内首家原生机器人“大脑芯片”企业获数亿元融资",
+      "source": "36氪",
+      "url": "https://36kr.com/p/3821371042877575?f=rss",
+      "keywords": [
+        "腾讯 AI",
+        "华为 智能",
+        "芯片 国产化"
+      ],
+      "original_score": 1.0,
+      "personalized_score": 1,
+      "keyword_weights": {
+        "腾讯 AI": 0,
+        "华为 智能": 0,
+        "芯片 国产化": 0
+      },
+      "source_weight": 0
+    },
+    {
+      "title": "对话王小川：离开通用人工智能的主干道之后",
+      "source": "36氪",
+      "url": "https://36kr.com/p/3821521291038856?f=rss",
+      "keywords": [
+        "OpenAI",
+        "Google DeepMind",
+        "Anthropic",
+        "人工智能 政策"
+      ],
+      "original_score": 1.0,
+      "personalized_score": 1,
+      "keyword_weights": {
+        "OpenAI": 0,
+        "Google DeepMind": 0,
+        "Anthropic": 0,
+        "人工智能 政策": 0
+      },
+      "source_weight": 0
+    },
+    {
+      "title": "Green steel startup Boston Metal is doubling down on critical metals",
+      "source": "MIT Tech Review",
+      "url": "https://www.technologyreview.com/2026/05/20/1137523/boston-metal-funding-critical-metals/",
+      "keywords": [
+        "Meta AI",
+        "AI funding",
+        "AI startup"
+      ],
+      "original_score": 1.0,
+      "personalized_score": 1,
+      "keyword_weights": {
+        "Meta AI": 0,
+        "AI funding": 0,
+        "AI startup": 0
+      },
+      "source_weight": 0
+    },
+    {
+      "title": "“今天的OpenAI，就是昨天的Sun！” 杨立昆最新长谈：像Linux击溃微软一样，开源AI终将统治世界",
+      "source": "AI科技大本营",
+      "url": "https://blog.csdn.net/dQCFKyQDXYm3F8rB0/article/details/161204374",
+      "keywords": [
+        "OpenAI",
+        "Meta AI"
+      ],
+      "original_score": 0.7999999999999999,
+      "personalized_score": 0.7999999999999999,
+      "keyword_weights": {
+        "OpenAI": 0,
+        "Meta AI": 0
+      },
+      "source_weight": 0
+    },
+    {
+      "title": "截胡算力、吞吃工具链、吸纳Karpathy：Anthropic如何围剿OpenAI？",
+      "source": "AI科技大本营",
+      "url": "https://blog.csdn.net/dQCFKyQDXYm3F8rB0/article/details/161240023",
+      "keywords": [
+        "OpenAI",
+        "Anthropic"
+      ],
+      "original_score": 0.7999999999999999,
+      "personalized_score": 0.7999999999999999,
+      "keyword_weights": {
+        "OpenAI": 0,
+        "Anthropic": 0
+      },
+      "source_weight": 0
+    },
+    {
+      "title": "BudsLink Brings Advanced Earbud Controls to Linux Desktops",
+      "source": "Linux Journal",
+      "url": "https://www.linuxjournal.com/content/budslink-brings-advanced-earbud-controls-linux-desktops",
+      "keywords": [
+        "Apple AI"
+      ],
+      "original_score": 0.39999999999999997,
+      "personalized_score": 0.39999999999999997,
+      "keyword_weights": {
+        "Apple AI": 0
+      },
+      "source_weight": 0
+    },
+    {
+      "title": "How VCs and founders use inflated ‘ARR’ to crown AI startups",
+      "source": "TechCrunch-AI",
+      "url": "https://techcrunch.com/2026/05/22/how-vcs-and-founders-use-inflated-arr-to-kingmake-ai-startups/",
+      "keywords": [
+        "AI startup"
+      ],
+      "original_score": 0.39999999999999997,
+      "personalized_score": 0.39999999999999997,
+      "keyword_weights": {
+        "AI startup": 0
+      },
+      "source_weight": 0
+    },
+    {
+      "title": "OpenAI大神教你如何榨干Codex",
+      "source": "量子位",
+      "url": "https://www.qbitai.com/2026/05/423179.html",
+      "keywords": [
+        "OpenAI"
+      ],
+      "original_score": 0.39999999999999997,
+      "personalized_score": 0.39999999999999997,
+      "keyword_weights": {
+        "OpenAI": 0
+      },
+      "source_weight": 0
+    }
+  ]
+}

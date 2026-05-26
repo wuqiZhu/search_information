@@ -1,0 +1,398 @@
+# TrendRadar 配置文件
+# 金字塔模型：求职导向的信息收集系统
+# 核心原则：每条信息都要能转化为"实际好处"
+# 覆盖范围：全球（中国 + 国际）
+
+# 关键词配置（金字塔模型）
+keywords:
+  # 第2层：AI公司与基金（权重 1.2）
+  # 聚焦：公司招聘 + 重大技术发布（直接相关）
+  ai_company:
+    # 中国AI公司（招聘相关）
+    - "字节跳动 招聘"
+    - "DeepSeek 招聘"
+    - "商汤科技 实习"
+    - "科大讯飞 嵌入式"
+    - "百度 招聘"
+    - "阿里 达摩院"
+    - "腾讯 AI"
+    - "华为 智能"
+    # 国际AI公司（重大事件）
+    - "OpenAI"
+    - "Google DeepMind"
+    - "Anthropic"
+    - "Meta AI"
+    - "NVIDIA AI"
+    # 投资风向（精简，只保留高价值信号）
+    - "AI基金 科创"
+    - "人工智能ETF"
+    - "芯片 国产化"
+
+  # 第3层：福利（权重 1.0）
+  # 聚焦：能直接省钱/赚钱的具体资源
+  welfare:
+    # 开源项目奖金
+    - "开源之夏"
+    - "Google Summer of Code"
+    - "GSoC"
+    # 政府补贴（城市定向）
+    - "深圳 应届生 补贴"
+    - "深圳 租房 补贴"
+    - "上海 应届生 补贴"
+    - "杭州 应届生 补贴"
+    - "人才引进 补贴"
+    # 免费资源（具体平台）
+    - "GitHub学生包"
+    - "student discount"
+    - "student developer"
+
+  # 第4层：嵌入式行业（权重 0.8）
+  industry:
+    - "嵌入式Linux"
+    - "RISC-V"
+    - "驱动开发"
+    - "嵌入式AI"
+    - "RTOS"
+
+# 信号源配置
+sources:
+  # RSS源
+  rss:
+    # 第4层：嵌入式行业（英文技术源）
+    - name: "Phoronix"
+      url: "https://www.phoronix.com/rss.php"
+      enabled: true
+      layers: [4]
+    - name: "LWN.net"
+      url: "https://lwn.net/headlines/rss"
+      enabled: true
+      layers: [4]
+    - name: "Hackaday"
+      url: "https://hackaday.com/feed/"
+      enabled: true
+      layers: [4]
+    - name: "Embedded.com"
+      url: "https://www.embedded.com/feed/"
+      enabled: true
+      layers: [4]
+    - name: "EE Times"
+      url: "https://www.eetimes.com/feed/"
+      enabled: true
+      layers: [4]
+    - name: "Kernel.org"
+      url: "https://www.kernel.org/feeds/all.atom.xml"
+      enabled: true
+      layers: [4]
+    - name: "Linux Journal"
+      url: "https://www.linuxjournal.com/node/feed"
+      enabled: true
+      layers: [4]
+    # 第2层：AI公司与基金（中文科技资讯）
+    - name: "开源中国"
+      url: "https://www.oschina.net/news/rss"
+      enabled: true
+      layers: [2, 4]
+    - name: "36氪"
+      url: "https://36kr.com/feed"
+      enabled: true
+      layers: [2]
+    - name: "机器之心"
+      url: "https://www.jiqizhixin.com/rss"
+      enabled: true
+      layers: [2]
+    - name: "量子位"
+      url: "https://www.qbitai.com/feed"
+      enabled: true
+      layers: [2]
+    - name: "AI科技大本营"
+      url: "https://blog.csdn.net/dQCFKyQDXYm3F8rB0/rss/list"
+      enabled: true
+      layers: [2]
+    - name: "InfoQ-AI"
+      url: "https://www.infoq.cn/topic/AI/rss"
+      enabled: true
+      layers: [2]
+    # 第2层：国际AI资讯
+    - name: "TechCrunch-AI"
+      url: "https://techcrunch.com/category/artificial-intelligence/feed/"
+      enabled: true
+      layers: [2]
+    - name: "The Verge-AI"
+      url: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml"
+      enabled: true
+      layers: [2]
+    - name: "MIT Tech Review"
+      url: "https://www.technologyreview.com/feed/"
+      enabled: true
+      layers: [2]
+    - name: "Ars Technica"
+      url: "https://feeds.arstechnica.com/arstechnica/technology-lab"
+      enabled: true
+      layers: [2, 4]
+    - name: "Hacker News"
+      url: "https://hnrss.org/frontpage"
+      enabled: true
+      layers: [2, 4]
+    # 第3层：福利（开源项目、学生资源）
+    - name: "GitHub Blog"
+      url: "https://github.blog/feed/"
+      enabled: true
+      layers: [3]
+    # 禁用的源
+    - name: "Linux Weekly News"
+      url: "https://lwn.net/headlines/newrss"
+      enabled: false
+    - name: "V2EX-求职"
+      url: "https://www.v2ex.com/feed/tab/jobs.xml"
+      enabled: false
+    - name: "V2EX-酷工作"
+      url: "https://www.v2ex.com/feed/tab/career.xml"
+      enabled: false
+
+  # 网页爬虫源
+  web:
+    # 第4层：嵌入式行业
+    - name: "掘金嵌入式"
+      url: "https://juejin.cn/tag/嵌入式"
+      selector: ".article-list"
+      enabled: true
+      layers: [4]
+    - name: "嵌入式Linux中文站"
+      url: "http://www.embeddedlinux.org.cn"
+      selector: ".list-item"
+      enabled: true
+      layers: [4]
+    - name: "电子发烧友-嵌入式"
+      url: "https://www.elecfans.com/emb/"
+      selector: ".list-box"
+      enabled: true
+      layers: [4]
+    - name: "21IC-嵌入式"
+      url: "https://www.21ic.com/news/"
+      selector: ".news-list"
+      enabled: true
+      layers: [4]
+    # 第2层：AI公司招聘动态
+    - name: "牛客网-讨论区"
+      url: "https://www.nowcoder.com/discuss/tag/644"
+      selector: ".discuss-main"
+      enabled: true
+      layers: [2]
+    - name: "知乎-AI话题"
+      url: "https://www.zhihu.com/topic/19551277/hot"
+      selector: ".List-item"
+      enabled: true
+      layers: [2]
+    # 第3层：福利
+    - name: "GitHub学生包"
+      url: "https://education.github.com/pack"
+      selector: ".pack-items"
+      enabled: true
+      layers: [3]
+    - name: "开源之夏"
+      url: "https://summer-ospp.ac.cn/"
+      selector: ".project-list"
+      enabled: true
+      layers: [3]
+    - name: "Google Summer of Code"
+      url: "https://summerofcode.withgoogle.com/"
+      selector: ".program-events"
+      enabled: true
+      layers: [3]
+    - name: "阿里云学生"
+      url: "https://developer.aliyun.com/plan/student"
+      selector: ".student-plan"
+      enabled: true
+      layers: [3]
+    - name: "腾讯云学生"
+      url: "https://cloud.tencent.com/act/campus"
+      selector: ".campus-activity"
+      enabled: true
+      layers: [3]
+
+  # GitHub仓库监控（只保留核心项目）
+  github:
+    # 第4层：嵌入式核心项目（6个）
+    - name: "linux-kernel"
+      repo: "torvalds/linux"
+      events: ["tags"]
+      api_type: "tags"
+      enabled: true
+    - name: "u-boot"
+      repo: "u-boot/u-boot"
+      events: ["tags"]
+      api_type: "tags"
+      enabled: true
+    - name: "buildroot"
+      repo: "buildroot/buildroot"
+      events: ["tags"]
+      api_type: "tags"
+      enabled: true
+    - name: "zephyr"
+      repo: "zephyrproject-rtos/zephyr"
+      events: ["releases"]
+      api_type: "releases"
+      enabled: true
+    - name: "freertos"
+      repo: "FreeRTOS/FreeRTOS"
+      events: ["releases"]
+      api_type: "releases"
+      enabled: true
+    - name: "riscv-gnu-toolchain"
+      repo: "riscv-collab/riscv-gnu-toolchain"
+      events: ["tags"]
+      api_type: "tags"
+      enabled: true
+    # 第2层：AI公司开源项目（4个）
+    - name: "DeepSeek"
+      repo: "deepseek-ai/DeepSeek-V3"
+      events: ["releases"]
+      api_type: "releases"
+      enabled: true
+    - name: "PyTorch"
+      repo: "pytorch/pytorch"
+      events: ["releases"]
+      api_type: "releases"
+      enabled: true
+    - name: "LLaMA"
+      repo: "meta-llama/llama"
+      events: ["releases"]
+      api_type: "releases"
+      enabled: true
+    - name: "ONNX Runtime"
+      repo: "microsoft/onnxruntime"
+      events: ["releases"]
+      api_type: "releases"
+      enabled: true
+
+# 分层时间配置
+# 不同层级的信息有不同的时效性需求
+time_config:
+  # 第1层：求职（极高的时间敏感度）
+  job_hunting:
+    time_window_days: 7          # 只关注最近7天的岗位
+    decay_type: "exponential"    # 指数衰减
+    decay_half_life_days: 3      # 3天半衰期
+    max_items_per_source: 100    # 每个源最多抓100条
+
+  # 第2层：AI公司（中等时间敏感度）
+  ai_company:
+    time_window_days: 30         # 关注最近30天
+    decay_type: "linear"         # 线性衰减
+    decay_period_days: 30        # 30天衰减周期
+    max_items_per_source: 50     # 每个源最多抓50条
+    important_events: ["融资", "发布", "裁员", "IPO"]  # 重大事件长期保留
+
+  # 第3层：福利（低时间敏感度）
+  welfare:
+    time_window_days: 90         # 关注最近90天
+    decay_type: "slow"           # 缓慢衰减
+    decay_period_days: 90        # 90天衰减周期
+    max_items_per_source: 30     # 每个源最多抓30条
+    application_window_alert: true  # 申请窗口期提醒
+
+  # 第4层：嵌入式行业（极低时间敏感度）
+  industry:
+    time_window_days: 365        # 关注最近1年
+    decay_type: "none"           # 不衰减
+    max_items_per_source: 100    # 每个源最多抓100条
+    collect_classic: true        # 收集经典内容
+
+# 通知配置
+notifications:
+  dingtalk:
+    enabled: true
+    webhook: "${DINGTALK_WEBHOOK}"
+    secret: "${DINGTALK_SECRET}"
+    feedback_url: "http://localhost:8080"
+    template: |
+      ## 📡 TrendRadar 信号通知
+
+      ---
+
+      **⏰ 时间**: {timestamp}
+      **📍 来源**: {source}
+      **🏷️ 关键词**: {keywords}
+
+      ---
+
+      ### 📰 标题
+      {title}
+
+      ### 📝 摘要
+      {summary}
+
+      ---
+
+      🔗 **[查看原文]({url})**
+
+      ---
+
+      ### 💭 您的反馈
+      [👍 收藏]({feedback_url}/feedback?hash={signal_hash}&action=favorite&title={encoded_title}&source={source}&keywords={keywords}) | [👎 忽略]({feedback_url}/feedback?hash={signal_hash}&action=ignore&title={encoded_title}&source={source}&keywords={keywords})
+
+      ---
+
+      > 💡 *此消息由 TrendRadar 自动生成*
+
+  email:
+    enabled: true
+    smtp_server: "${EMAIL_HOST}"
+    smtp_port: ${EMAIL_PORT}
+    use_ssl: true
+    sender: "${EMAIL_USER}"
+    password: "${EMAIL_PASS}"
+    receivers:
+      - "${EMAIL_TO}"
+    subject_template: "[TrendRadar] {keywords} - {title}"
+
+  webhook:
+    enabled: true
+    url: "http://localhost:5678/webhook/trendradar"
+    method: "POST"
+    headers:
+      Content-Type: "application/json"
+
+# 过滤规则
+filters:
+  min_relevance_score: 0.15
+  exclude_keywords:
+    - "广告"
+    - "推广"
+    - "培训"
+  time_range_hours: 24
+  max_signals_per_day: 100
+
+# 运行配置
+scheduler:
+  interval_minutes: 30
+  run_at: "08:00"
+  timezone: "Asia/Shanghai"
+
+# 数据存储
+storage:
+  local_path: "./data/signals"
+  retention_days: 30
+  format: "json"
+
+# 日志配置
+logging:
+  level: "INFO"
+  file: "./logs/trendradar.log"
+  max_size_mb: 10
+  backup_count: 5
+
+# 健康检查配置
+health_check:
+  interval_hours: 24
+  enabled: true
+
+# 合并推送配置
+merge_push:
+  window_minutes: 10
+  enabled: true
+
+# 数据清理配置
+cleanup:
+  retention_days: 7
+  enabled: true

@@ -1,0 +1,10 @@
+此目录包含旧版 TrendRadar 代码（嵌入式Linux技术信号监控工具）。
+新版系统位于 trendradar/ 目录，功能更完善（热榜聚合 + RSS + AI分析 + MCP Server）。
+
+旧版文件：
+- main_old.py     - 旧版入口（TrendRadar 类）
+- config_old.yaml - 旧版配置（金字塔模型关键词分类）
+- test_notification.py - 旧版通知测试
+- test_pyramid.py - 旧版金字塔模型测试
+
+如需使用旧版：python legacy/main_old.py

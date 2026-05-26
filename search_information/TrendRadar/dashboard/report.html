@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrendRadar 仪表盘</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .header .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+        .header .update-time {
+            color: #999;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .card h2 {
+            color: #333;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .card h2 .icon {
+            font-size: 1.2em;
+        }
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        .status-healthy {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-degraded {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status-critical {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status-unknown {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+        .source-list {
+            list-style: none;
+        }
+        .source-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .source-item:last-child {
+            border-bottom: none;
+        }
+        .source-name {
+            font-weight: 500;
+        }
+        .keyword-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .keyword-tag {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+        .progress-bar {
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }
+        .alert-box {
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+        .alert-warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+        }
+        .alert-success {
+            background: #d4edda;
+            border: 1px solid #28a745;
+            color: #155724;
+        }
+        .footer {
+            text-align: center;
+            color: white;
+            padding: 20px;
+            font-size: 0.9em;
+        }
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            .stat-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📡 TrendRadar 仪表盘</h1>
+            <div class="subtitle">嵌入式Linux技术信号监控系统</div>
+            <div class="update-time">更新时间: 2026-05-25 18:18:46</div>
+        </div>
+        
+        <div class="grid">
+            <!-- 信号统计卡片 -->
+            <div class="card">
+                <h2><span class="icon">📊</span> 信号统计</h2>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <div class="stat-value">121</div>
+                        <div class="stat-label">总信号数</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">21</div>
+                        <div class="stat-label">今日新增</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">121</div>
+                        <div class="stat-label">本周新增</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">死信队列</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 系统状态卡片 -->
+            <div class="card">
+                <h2><span class="icon">💓</span> 系统状态</h2>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <div class="stat-value">46</div>
+                        <div class="stat-label">已处理信号</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">待处理信号</div>
+                    </div>
+                </div>
+                <div class="alert-box alert-success">
+                    系统状态: 运行中
+                </div>
+            </div>
+            
+            <!-- 源健康状态卡片 -->
+            <div class="card">
+                <h2><span class="icon">🏥</span> 源健康状态</h2>
+                <span class="status-badge status-degraded">DEGRADED</span>
+                <p style="margin-top: 15px; color: #666;">失败源: 1 个</p>
+                <p style="color: #666;">检测时间: 2026-05-25T12:33:10</p>
+            </div>
+            
+            <!-- AI成本追踪卡片 -->
+            <div class="card">
+                <h2><span class="icon">💰</span> AI成本追踪</h2>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">今日调用</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">$0.00</div>
+                        <div class="stat-label">今日费用</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">本月调用</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">$0.00</div>
+                        <div class="stat-label">本月费用</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 来源分布卡片 -->
+        <div class="card" style="margin-bottom: 20px;">
+            <h2><span class="icon">📍</span> 信号来源分布</h2>
+            <ul class="source-list">
+                <li class="source-item"><span class="source-name">Embedded.com</span><span>21 条</span></li><li class="source-item"><span class="source-name">Kernel.org</span><span>18 条</span></li><li class="source-item"><span class="source-name">Linux Journal</span><span>13 条</span></li><li class="source-item"><span class="source-name">LWN.net</span><span>12 条</span></li><li class="source-item"><span class="source-name">Phoronix</span><span>12 条</span></li><li class="source-item"><span class="source-name">36氪</span><span>10 条</span></li><li class="source-item"><span class="source-name">MIT Tech Review</span><span>8 条</span></li><li class="source-item"><span class="source-name">AI科技大本营</span><span>6 条</span></li><li class="source-item"><span class="source-name">EE Times</span><span>5 条</span></li><li class="source-item"><span class="source-name">Hackaday</span><span>5 条</span></li>
+            </ul>
+        </div>
+        
+        <!-- 热门关键词卡片 -->
+        <div class="card" style="margin-bottom: 20px;">
+            <h2><span class="icon">🔥</span> 热门关键词</h2>
+            <div class="keyword-cloud">
+                <span class="keyword-tag">kernel (47)</span><span class="keyword-tag">embedded (28)</span><span class="keyword-tag">OpenAI (20)</span><span class="keyword-tag">Anthropic (11)</span><span class="keyword-tag">RISC-V (6)</span><span class="keyword-tag">Meta AI (6)</span><span class="keyword-tag">ARM (5)</span><span class="keyword-tag">Google DeepMind (5)</span><span class="keyword-tag">DeepSeek 招聘 (4)</span><span class="keyword-tag">腾讯 AI (4)</span><span class="keyword-tag">华为 智能 (4)</span><span class="keyword-tag">MCU (3)</span><span class="keyword-tag">AI startup (3)</span><span class="keyword-tag">百度 招聘 (2)</span><span class="keyword-tag">人工智能 政策 (2)</span>
+            </div>
+        </div>
+        
+        <!-- 每日信号趋势 -->
+        <div class="card" style="margin-bottom: 20px;">
+            <h2><span class="icon">📈</span> 每日信号趋势（近7天）</h2>
+            <div style="display: flex; align-items: flex-end; height: 200px; gap: 10px; padding: 20px 0;">
+                <div style="flex: 1; display: flex; flex-direction: column; align-items: center;"><div style="width: 100%; background: linear-gradient(180deg, #667eea, #764ba2); border-radius: 5px 5px 0 0; height: 1020px;"></div><div style="font-size: 0.8em; color: #666; margin-top: 5px;">05-21</div><div style="font-size: 0.9em; font-weight: bold;">34</div></div><div style="flex: 1; display: flex; flex-direction: column; align-items: center;"><div style="width: 100%; background: linear-gradient(180deg, #667eea, #764ba2); border-radius: 5px 5px 0 0; height: 1050px;"></div><div style="font-size: 0.8em; color: #666; margin-top: 5px;">05-22</div><div style="font-size: 0.9em; font-weight: bold;">35</div></div><div style="flex: 1; display: flex; flex-direction: column; align-items: center;"><div style="width: 100%; background: linear-gradient(180deg, #667eea, #764ba2); border-radius: 5px 5px 0 0; height: 120px;"></div><div style="font-size: 0.8em; color: #666; margin-top: 5px;">05-23</div><div style="font-size: 0.9em; font-weight: bold;">4</div></div><div style="flex: 1; display: flex; flex-direction: column; align-items: center;"><div style="width: 100%; background: linear-gradient(180deg, #667eea, #764ba2); border-radius: 5px 5px 0 0; height: 810px;"></div><div style="font-size: 0.8em; color: #666; margin-top: 5px;">05-24</div><div style="font-size: 0.9em; font-weight: bold;">27</div></div><div style="flex: 1; display: flex; flex-direction: column; align-items: center;"><div style="width: 100%; background: linear-gradient(180deg, #667eea, #764ba2); border-radius: 5px 5px 0 0; height: 630px;"></div><div style="font-size: 0.8em; color: #666; margin-top: 5px;">05-25</div><div style="font-size: 0.9em; font-weight: bold;">21</div></div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            TrendRadar - 嵌入式Linux技术信号监控系统 | 自动生成于 2026-05-25 18:18:46
+        </div>
+    </div>
+</body>
+</html>
