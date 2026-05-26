@@ -7,9 +7,13 @@ AI 客户端模块
 """
 
 import os
+import time
 from typing import Any, Dict, List, Optional
 
 from litellm import completion
+
+_call_count = 0
+_last_call_time = 0
 
 
 class AIClient:
@@ -38,13 +42,26 @@ class AIClient:
         self.timeout = config.get("TIMEOUT", 120)
         self.num_retries = config.get("NUM_RETRIES", 2)
         self.fallback_models = config.get("FALLBACK_MODELS", [])
+        self.max_calls = config.get("MAX_CALLS", 100)
+        self.min_interval = config.get("MIN_INTERVAL", 3)
 
     def chat(
         self,
         messages: List[Dict[str, str]],
         **kwargs
     ) -> str:
-        """
+        global _call_count, _last_call_time
+
+        _call_count += 1
+        if _call_count > self.max_calls:
+            raise RuntimeError(f"已达到 AI 调用上限 ({self.max_calls})，防止过度消耗")
+
+        elapsed = time.time() - _last_call_time
+        if elapsed < self.min_interval:
+            time.sleep(self.min_interval - elapsed)
+        _last_call_time = time.time()
+
+        # 构建请求参数"""
         调用 AI 模型进行对话
 
         Args:

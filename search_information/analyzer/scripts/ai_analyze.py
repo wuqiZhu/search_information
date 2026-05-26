@@ -86,10 +86,10 @@ def check_cost_limit(tracker: dict, config: dict) -> tuple:
     
     # 获取限制配置
     cost_limit = config.get('cost_limit', {})
-    daily_limit = cost_limit.get('daily_calls', 100)
-    daily_cost_limit = cost_limit.get('daily_cost', 10.0)  # 美元
-    monthly_limit = cost_limit.get('monthly_calls', 1000)
-    monthly_cost_limit = cost_limit.get('monthly_cost', 100.0)  # 美元
+    daily_limit = cost_limit.get('daily_calls', 20)
+    daily_cost_limit = cost_limit.get('daily_cost', 2.0)  # 美元
+    monthly_limit = cost_limit.get('monthly_calls', 200)
+    monthly_cost_limit = cost_limit.get('monthly_cost', 20.0)  # 美元
     
     # 检查每日限制
     if tracker['daily_calls'] >= daily_limit:

@@ -126,12 +126,16 @@ class AIAnalyzer:
         self.max_tokens = config.get("max_tokens", 2000)
         self.temperature = config.get("temperature", 0.3)
         self.token_tracker = TokenTracker()
+        self.max_calls = config.get("max_calls", 50)
 
         if self.api_key.startswith("${"):
             env_key = self.api_key.strip("${}")
             self.api_key = os.environ.get(env_key, "")
 
     def _call_api(self, prompt: str, max_tokens: int = None) -> tuple:
+        if self.token_tracker.call_count >= self.max_calls:
+            raise RuntimeError(f"已达到 API 调用上限 ({self.max_calls})，本次运行共消耗 {self.token_tracker.total_tokens} tokens")
+
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
