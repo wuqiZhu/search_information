@@ -42,8 +42,8 @@ class AIClient:
         self.timeout = config.get("TIMEOUT", 120)
         self.num_retries = config.get("NUM_RETRIES", 2)
         self.fallback_models = config.get("FALLBACK_MODELS", [])
-        self.max_calls = config.get("MAX_CALLS", 100)
-        self.min_interval = config.get("MIN_INTERVAL", 3)
+        self.max_calls = config.get("MAX_CALLS", 9999)
+        self.min_interval = config.get("MIN_INTERVAL", 1)
 
     def chat(
         self,
