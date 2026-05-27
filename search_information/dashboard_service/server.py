@@ -74,19 +74,19 @@ def api_today():
     # TrendRadar 今日数据
     trend_count = query_db(
         DB_PATHS["trendradar"],
-        "SELECT COUNT(*) as count FROM news WHERE date >= ?",
+        "SELECT COUNT(*) as count FROM news_items WHERE created_at >= ?",
         (today,)
     )
     trend_signals = query_db(
         DB_PATHS["trendradar"],
-        "SELECT title, source, url, date FROM news WHERE date >= ? ORDER BY date DESC LIMIT 20",
+        "SELECT title, platform_id as source, url, created_at as date FROM news_items WHERE created_at >= ? ORDER BY created_at DESC LIMIT 20",
         (today,)
     )
 
     # RSS 数据
     rss_count = query_db(
         DB_PATHS["rss"],
-        "SELECT COUNT(*) as count FROM articles WHERE fetched_at >= ?",
+        "SELECT COUNT(*) as count FROM rss_items WHERE created_at >= ?",
         (today,)
     )
 
@@ -152,9 +152,9 @@ def api_stats():
     for name, path in DB_PATHS.items():
         try:
             if name == "trendradar":
-                count = query_db(path, "SELECT COUNT(*) as count FROM news")
+                count = query_db(path, "SELECT COUNT(*) as count FROM news_items")
             elif name == "rss":
-                count = query_db(path, "SELECT COUNT(*) as count FROM articles")
+                count = query_db(path, "SELECT COUNT(*) as count FROM rss_items")
             elif name == "analyse":
                 count = query_db(path, "SELECT COUNT(*) as count FROM analyzed")
             elif name == "jobs":
