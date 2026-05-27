@@ -98,6 +98,10 @@ def send_dingtalk(text: str, title: str = "通知"):
         else:
             url = webhook
 
+        # 确保消息正文包含关键词"通知"（钉钉机器人安全设置要求）
+        if "通知" not in text:
+            text = f"**通知**\n\n{text}"
+
         payload = json.dumps({
             "msgtype": "markdown",
             "markdown": {"title": title, "text": text}

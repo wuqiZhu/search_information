@@ -394,6 +394,10 @@ def send_to_dingtalk(
             f"发送{log_prefix}第 {i}/{len(batches)} 批次，大小：{content_size} 字节 [{report_type}]"
         )
 
+        # 确保消息正文包含关键词"通知"（钉钉机器人安全设置要求）
+        if "通知" not in batch_content:
+            batch_content = f"**通知**\n\n{batch_content}"
+
         payload = {
             "msgtype": "markdown",
             "markdown": {
