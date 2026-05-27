@@ -33,21 +33,6 @@ services:
     depends_on:
       - trendradar
 
-  # find_job - 求职自动化
-  job-scraper:
-    build:
-      context: ./find_job
-      dockerfile: Dockerfile
-    container_name: job-scraper
-    restart: always
-    volumes:
-      - ./find_job:/app
-      - ./data/find_job:/app/data
-    env_file:
-      - .env
-    networks:
-      - project-net
-
   # invest - 投资分析后端
   invest-backend:
     build:
@@ -109,7 +94,6 @@ services:
     environment:
       - DATA_BASE=/app/data
       - ANALYSE_DB=/app/data/knowledge_base/analyzed.db
-      - JOBS_DB=/app/data/find_job/jobs.db
       - INVEST_DB=/app/data/invest/fund_data.db
     networks:
       - project-net

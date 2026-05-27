@@ -165,6 +165,35 @@ rss:
       name: "Embedded.com"
       url: "https://www.embedded.com/feed/"
 
+    # 财经投资相关RSS源
+    - id: "xueqiu"
+      name: "雪球热帖"
+      url: "https://rsshub.app/xueqiu/hot"
+
+    - id: "eastmoney"
+      name: "东方财富"
+      url: "https://rsshub.app/eastmoney/report/strategyreport"
+
+    - id: "sina-finance"
+      name: "新浪财经"
+      url: "https://rsshub.app/sina/finance/roll"
+
+    - id: "wallstreetcn"
+      name: "华尔街见闻"
+      url: "https://rsshub.app/wallstreetcn/news/global"
+
+    - id: "cls"
+      name: "财联社"
+      url: "https://rsshub.app/cls/telegraph"
+
+    - id: "gelonghui"
+      name: "格隆汇"
+      url: "https://rsshub.app/gelonghui/home"
+
+    - id: "zhitongcaijing"
+      name: "智通财经"
+      url: "https://rsshub.app/zhitongcaijing/recommend"
+
     # 自定义源示例
     # - id: "custom-feed"
     #   name: "自定义源"
@@ -544,13 +573,13 @@ advanced:
 
   # 热榜爬虫技术参数
   crawler:
-    request_interval: 2000            # 请求间隔（毫秒）
+    request_interval: 1500            # 请求间隔（毫秒）- 从2000减少到1500
     use_proxy: false                  # 是否启用代理
     default_proxy: "http://127.0.0.1:10801"
 
   # RSS 设置
   rss:
-    request_interval: 1000            # 请求间隔（毫秒）
+    request_interval: 800             # 请求间隔（毫秒）- 从1000减少到800
     timeout: 15                       # 请求超时（秒）
     use_proxy: false                  # 是否使用代理
     proxy_url: ""                     # RSS 专属代理（留空则使用 crawler.default_proxy）
