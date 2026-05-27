@@ -34,6 +34,18 @@ DB_PATHS = {
 }
 
 
+def find_latest_db(directory: str, pattern: str = "*.db") -> str:
+    """查找目录中最新的数据库文件"""
+    try:
+        dir_path = Path(directory)
+        if not dir_path.exists():
+            return ""
+        db_files = sorted(dir_path.glob(pattern), key=lambda f: f.stat().st_mtime, reverse=True)
+        return str(db_files[0]) if db_files else ""
+    except Exception:
+        return ""
+
+
 def query_db(db_path: str, sql: str, params: tuple = ()) -> list:
     """安全查询数据库"""
     try:
@@ -331,13 +343,34 @@ def create_app():
                     if key and key not in os.environ:
                         os.environ[key] = value
 
-    # 更新数据库路径
-    project_root = Path(__file__).parent.parent
-    DB_PATHS["trendradar"] = os.environ.get("TRENDRADAR_DB", str(project_root / "TrendRadar" / "data" / "trendradar.db"))
-    DB_PATHS["rss"] = os.environ.get("RSS_DB", str(project_root / "TrendRadar" / "data" / "rss.db"))
-    DB_PATHS["analyse"] = os.environ.get("ANALYSE_DB", str(project_root / "analyse_information" / "data" / "analyzed.db"))
-    DB_PATHS["jobs"] = os.environ.get("JOBS_DB", str(project_root / "find_job" / "data" / "jobs.db"))
-    DB_PATHS["invest"] = os.environ.get("INVEST_DB", str(project_root / "invest" / "data" / "fund_data.db"))
+    # 更新数据库路径（支持自动查找最新数据库）
+    # 优先使用环境变量，然后查找最新的数据库文件
+    data_base = Path(os.environ.get("DATA_BASE", "/app/data"))
+
+    # TrendRadar 热榜数据库（按日期存储：news/2026-05-27.db）
+    trendradar_news_dir = data_base / "search_information" / "news"
+    if trendradar_news_dir.exists():
+        DB_PATHS["trendradar"] = find_latest_db(str(trendradar_news_dir))
+    else:
+        DB_PATHS["trendradar"] = os.environ.get("TRENDRADAR_DB", "")
+
+    # RSS 数据库（按日期存储：rss/2026-05-27.db）
+    rss_dir = data_base / "search_information" / "rss"
+    if rss_dir.exists():
+        DB_PATHS["rss"] = find_latest_db(str(rss_dir))
+    else:
+        DB_PATHS["rss"] = os.environ.get("RSS_DB", "")
+
+    # 分析数据库
+    DB_PATHS["analyse"] = os.environ.get("ANALYSE_DB", str(data_base / "knowledge_base" / "analyzed.db"))
+
+    # 求职数据库
+    DB_PATHS["jobs"] = os.environ.get("JOBS_DB", str(data_base / "find_job" / "jobs.db"))
+
+    # 投资数据库
+    DB_PATHS["invest"] = os.environ.get("INVEST_DB", str(data_base / "invest" / "fund_data.db"))
+
+    logger.info(f"数据库路径: {DB_PATHS}")
 
     return app
 

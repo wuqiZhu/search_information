@@ -103,13 +103,9 @@ services:
     ports:
       - "5060:5060"
     volumes:
-      - ./data/search_information:/app/data/search_information:ro
-      - ./data/knowledge_base:/app/data/knowledge_base:ro
-      - ./data/find_job:/app/data/find_job:ro
-      - ./data/invest:/app/data/invest:ro
+      - ./data:/app/data:ro
     environment:
-      - TRENDRADAR_DB=/app/data/search_information/trendradar.db
-      - RSS_DB=/app/data/search_information/rss.db
+      - DATA_BASE=/app/data
       - ANALYSE_DB=/app/data/knowledge_base/analyzed.db
       - JOBS_DB=/app/data/find_job/jobs.db
       - INVEST_DB=/app/data/invest/fund_data.db
