@@ -184,6 +184,36 @@ def api_health():
     })
 
 
+@app.route('/api/archive')
+def api_archive():
+    """获取归档统计"""
+    data_base = Path(os.environ.get("DATA_BASE", "/app/data"))
+    archive_dir = data_base / "search_information" / "archive"
+
+    if not archive_dir.exists():
+        return jsonify({
+            "total_archives": 0,
+            "total_size_mb": 0,
+            "archives": [],
+        })
+
+    archives = []
+    total_size = 0
+    for zip_file in sorted(archive_dir.glob("*.zip")):
+        size = zip_file.stat().st_size
+        total_size += size
+        archives.append({
+            "name": zip_file.name,
+            "size_mb": round(size / (1024 * 1024), 2),
+        })
+
+    return jsonify({
+        "total_archives": len(archives),
+        "total_size_mb": round(total_size / (1024 * 1024), 2),
+        "archives": archives,
+    })
+
+
 DASHBOARD_HTML = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -270,6 +300,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             <h2>投资预警</h2>
             <div id="invest-alerts"><div class="empty">加载中...</div></div>
         </div>
+
+        <div class="section">
+            <h2>数据归档</h2>
+            <div id="archive-info"><div class="empty">加载中...</div></div>
+        </div>
     </div>
 
     <script>
@@ -299,6 +334,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 renderList('invest-alerts', data.invest.alerts, item =>
                     `<div class="item"><div class="item-title">${item.fund_name}</div><div class="item-meta"><span class="badge badge-hot">${item.alert_type}</span> ${item.message}</div></div>`
                 );
+
+                loadArchive();
             } catch (e) {
                 console.error('加载失败:', e);
             }
@@ -311,6 +348,25 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 return;
             }
             el.innerHTML = items.map(template).join('');
+        }
+
+        async function loadArchive() {
+            try {
+                const resp = await fetch('/api/archive');
+                const data = await resp.json();
+                const el = document.getElementById('archive-info');
+                if (data.total_archives === 0) {
+                    el.innerHTML = '<div class="empty">暂无归档数据（数据保留30天后自动归档）</div>';
+                    return;
+                }
+                let html = `<div class="item"><div class="item-title">共 ${data.total_archives} 个归档文件，总大小 ${data.total_size_mb} MB</div></div>`;
+                data.archives.forEach(a => {
+                    html += `<div class="item"><div class="item-title">${a.name}</div><div class="item-meta">${a.size_mb} MB</div></div>`;
+                });
+                el.innerHTML = html;
+            } catch (e) {
+                console.error('加载归档信息失败:', e);
+            }
         }
 
         loadData();

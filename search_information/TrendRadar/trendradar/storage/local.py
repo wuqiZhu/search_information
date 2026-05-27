@@ -9,12 +9,16 @@ import sqlite3
 import shutil
 import pytz
 import re
+import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
 
 from trendradar.storage.base import StorageBackend, NewsItem, NewsData, RSSItem, RSSData
 from trendradar.storage.sqlite_mixin import SQLiteStorageMixin
+from trendradar.storage.archive_manager import ArchiveManager
+
+logger = logging.getLogger(__name__)
 from trendradar.utils.time import (
     get_configured_time,
     format_date_folder,
@@ -347,100 +351,113 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
 
     def cleanup_old_data(self, retention_days: int) -> int:
         """
-        清理过期数据
+        清理过期数据（先归档再删除）
 
-        新结构清理逻辑：
-        - output/news/{date}.db  -> 删除过期的 .db 文件
-        - output/rss/{date}.db   -> 删除过期的 .db 文件
-        - output/txt/{date}/     -> 删除过期的日期目录
-        - output/html/{date}/    -> 删除过期的日期目录
+        清理流程：
+        1. 将过期的 .db 文件压缩归档到 output/archive/
+        2. 删除过期的 txt/ 和 html/ 快照目录
 
         Args:
             retention_days: 保留天数（0 表示不清理）
 
         Returns:
-            删除的文件/目录数量
+            清理的文件/目录数量
         """
         if retention_days <= 0:
             return 0
 
         deleted_count = 0
-        cutoff_date = self._get_configured_time() - timedelta(days=retention_days)
-
-        def parse_date_from_name(name: str) -> Optional[datetime]:
-            """从文件名或目录名解析日期 (ISO 格式: YYYY-MM-DD)"""
-            # 移除 .db 后缀
-            name = name.replace('.db', '')
-            try:
-                date_match = re.match(r'(\d{4})-(\d{2})-(\d{2})', name)
-                if date_match:
-                    return datetime(
-                        int(date_match.group(1)),
-                        int(date_match.group(2)),
-                        int(date_match.group(3)),
-                        tzinfo=pytz.timezone(self.timezone)
-                    )
-            except Exception:
-                pass
-            return None
 
         try:
             if not self.data_dir.exists():
                 return 0
 
-            # 清理数据库文件 (news/, rss/)
-            for db_type in ["news", "rss"]:
-                db_dir = self.data_dir / db_type
-                if not db_dir.exists():
-                    continue
+            # 先关闭所有过期数据库连接
+            cutoff_date = self._get_configured_time() - timedelta(days=retention_days)
+            self._close_expired_connections(cutoff_date)
 
-                for db_file in db_dir.glob("*.db"):
-                    file_date = parse_date_from_name(db_file.name)
-                    if file_date and file_date < cutoff_date:
-                        # 先关闭数据库连接
-                        db_path = str(db_file)
-                        if db_path in self._db_connections:
-                            try:
-                                self._db_connections[db_path].close()
-                                del self._db_connections[db_path]
-                            except Exception:
-                                pass
+            # 第一步：归档过期的 .db 文件（压缩后删除原文件）
+            archive_mgr = ArchiveManager(
+                data_dir=str(self.data_dir),
+                timezone=self.timezone,
+            )
+            archive_stats = archive_mgr.archive_old_data(retention_days)
+            deleted_count += archive_stats.get("archived", 0)
 
-                        # 删除文件
-                        try:
-                            db_file.unlink()
-                            deleted_count += 1
-                            print(f"[本地存储] 清理过期数据: {db_type}/{db_file.name}")
-                        except Exception as e:
-                            print(f"[本地存储] 删除文件失败 {db_file}: {e}")
-
-            # 清理快照目录 (txt/, html/)
-            for snapshot_type in ["txt", "html"]:
-                snapshot_dir = self.data_dir / snapshot_type
-                if not snapshot_dir.exists():
-                    continue
-
-                for date_folder in snapshot_dir.iterdir():
-                    if not date_folder.is_dir() or date_folder.name.startswith('.'):
-                        continue
-
-                    folder_date = parse_date_from_name(date_folder.name)
-                    if folder_date and folder_date < cutoff_date:
-                        try:
-                            shutil.rmtree(date_folder)
-                            deleted_count += 1
-                            print(f"[本地存储] 清理过期数据: {snapshot_type}/{date_folder.name}")
-                        except Exception as e:
-                            print(f"[本地存储] 删除目录失败 {date_folder}: {e}")
+            # 第二步：清理过期的快照目录 (txt/, html/)
+            deleted_count += self._cleanup_snapshot_dirs(retention_days)
 
             if deleted_count > 0:
-                print(f"[本地存储] 共清理 {deleted_count} 个过期文件/目录")
+                logger.info(f"[本地存储] 共清理 {deleted_count} 个过期文件/目录")
 
             return deleted_count
 
         except Exception as e:
-            print(f"[本地存储] 清理过期数据失败: {e}")
+            logger.error(f"[本地存储] 清理过期数据失败: {e}")
             return deleted_count
+
+    def _close_expired_connections(self, cutoff_date: datetime):
+        """关闭过期数据库连接"""
+        expired_paths = []
+        for db_path, conn in self._db_connections.items():
+            try:
+                name = Path(db_path).stem
+                match = re.match(r'(\d{4})-(\d{2})-(\d{2})', name)
+                if match:
+                    file_date = datetime(
+                        int(match.group(1)), int(match.group(2)), int(match.group(3)),
+                        tzinfo=pytz.timezone(self.timezone),
+                    )
+                    if file_date < cutoff_date:
+                        expired_paths.append(db_path)
+            except Exception:
+                pass
+
+        for db_path in expired_paths:
+            try:
+                self._db_connections[db_path].close()
+                del self._db_connections[db_path]
+                logger.debug(f"[本地存储] 关闭过期连接: {db_path}")
+            except Exception:
+                pass
+
+    def _cleanup_snapshot_dirs(self, retention_days: int) -> int:
+        """清理过期的快照目录 (txt/, html/)"""
+        deleted = 0
+        cutoff_date = self._get_configured_time() - timedelta(days=retention_days)
+
+        def parse_date_from_name(name: str) -> Optional[datetime]:
+            name = name.replace('.db', '')
+            try:
+                match = re.match(r'(\d{4})-(\d{2})-(\d{2})', name)
+                if match:
+                    return datetime(
+                        int(match.group(1)), int(match.group(2)), int(match.group(3)),
+                        tzinfo=pytz.timezone(self.timezone),
+                    )
+            except Exception:
+                pass
+            return None
+
+        for snapshot_type in ["txt", "html"]:
+            snapshot_dir = self.data_dir / snapshot_type
+            if not snapshot_dir.exists():
+                continue
+
+            for date_folder in snapshot_dir.iterdir():
+                if not date_folder.is_dir() or date_folder.name.startswith('.'):
+                    continue
+
+                folder_date = parse_date_from_name(date_folder.name)
+                if folder_date and folder_date < cutoff_date:
+                    try:
+                        shutil.rmtree(date_folder)
+                        deleted += 1
+                        logger.info(f"[本地存储] 清理过期快照: {snapshot_type}/{date_folder.name}")
+                    except Exception as e:
+                        logger.error(f"[本地存储] 删除目录失败 {date_folder}: {e}")
+
+        return deleted
 
     def __del__(self):
         """析构函数，确保关闭连接"""

@@ -11,6 +11,8 @@ services:
       - ./data/search_information:/app/output
     env_file:
       - .env
+    environment:
+      - STORAGE_RETENTION_DAYS=30
     networks:
       - project-net
 
