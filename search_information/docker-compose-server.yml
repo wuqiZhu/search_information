@@ -1,0 +1,121 @@
+services:
+  # TrendRadar - 信息采集
+  trendradar:
+    build:
+      context: ./search_information/search_information/TrendRadar
+      dockerfile: Dockerfile
+    container_name: trendradar
+    restart: always
+    volumes:
+      - ./search_information/search_information/TrendRadar/config:/app/config
+      - ./data/search_information:/app/output
+    env_file:
+      - .env
+    networks:
+      - project-net
+
+  # analyse_information - 信息分析
+  analyser:
+    build:
+      context: ./search_information/analyse_information
+      dockerfile: Dockerfile
+    container_name: analyser
+    command: sh -c "python analyzer/pipeline.py --rss && sleep 3600"
+    restart: always
+    volumes:
+      - ./data/knowledge_base:/app/knowledge_base
+    env_file:
+      - .env
+    networks:
+      - project-net
+    depends_on:
+      - trendradar
+
+  # find_job - 求职自动化
+  job-scraper:
+    build:
+      context: ./find_job
+      dockerfile: Dockerfile
+    container_name: job-scraper
+    restart: always
+    volumes:
+      - ./find_job:/app
+      - ./data/find_job:/app/data
+    env_file:
+      - .env
+    networks:
+      - project-net
+
+  # invest - 投资分析后端
+  invest-backend:
+    build:
+      context: ./invest
+      dockerfile: Dockerfile
+    container_name: invest-backend
+    ports:
+      - "5000:5000"
+    restart: always
+    volumes:
+      - ./invest/scripts:/app/scripts
+      - ./data/invest:/app/data
+    env_file:
+      - .env
+    networks:
+      - project-net
+
+  # invest - 前端
+  invest-frontend:
+    build:
+      context: ./invest/real-time-fund
+      dockerfile: Dockerfile
+    container_name: invest-frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    networks:
+      - project-net
+    depends_on:
+      - invest-backend
+
+  # 统一通知中心
+  notification-center:
+    build:
+      context: ./search_information/search_information/notification_center
+      dockerfile: Dockerfile
+    container_name: notification-center
+    restart: always
+    ports:
+      - "5050:5050"
+    volumes:
+      - ./data/notification:/app/data
+    env_file:
+      - .env
+    networks:
+      - project-net
+
+  # 统一 Web Dashboard
+  dashboard:
+    build:
+      context: ./search_information/search_information/dashboard_service
+      dockerfile: Dockerfile
+    container_name: dashboard
+    restart: always
+    ports:
+      - "5060:5060"
+    volumes:
+      - ./data/search_information:/app/data/search_information:ro
+      - ./data/knowledge_base:/app/data/knowledge_base:ro
+      - ./data/find_job:/app/data/find_job:ro
+      - ./data/invest:/app/data/invest:ro
+    environment:
+      - TRENDRADAR_DB=/app/data/search_information/trendradar.db
+      - RSS_DB=/app/data/search_information/rss.db
+      - ANALYSE_DB=/app/data/knowledge_base/analyzed.db
+      - JOBS_DB=/app/data/find_job/jobs.db
+      - INVEST_DB=/app/data/invest/fund_data.db
+    networks:
+      - project-net
+
+networks:
+  project-net:
+    driver: bridge
