@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 try:
-    from flask import Flask, jsonify, render_template_string
+    from flask import Flask, jsonify, render_template_string, request
 except ImportError:
     print("请安装 Flask: pip install flask")
     raise
@@ -214,12 +214,75 @@ def api_archive():
     })
 
 
+@app.route('/api/trend')
+def api_trend():
+    """获取历史趋势数据（用于图表）"""
+    days = int(request.args.get('days', 7))
+    data_base = Path(os.environ.get("DATA_BASE", "/app/data"))
+    news_dir = data_base / "search_information" / "news"
+
+    if not news_dir.exists():
+        return jsonify({"labels": [], "datasets": []})
+
+    result = {"labels": [], "news_count": [], "rss_count": []}
+
+    for i in range(days - 1, -1, -1):
+        date = (datetime.now() - timedelta(days=i)).strftime("%Y-%m-%d")
+        result["labels"].append(date)
+
+        # 查询新闻数量
+        db_file = news_dir / f"{date}.db"
+        if db_file.exists():
+            count = query_db(str(db_file), "SELECT COUNT(*) as count FROM news_items")
+            result["news_count"].append(count[0]["count"] if count else 0)
+        else:
+            result["news_count"].append(0)
+
+        # 查询 RSS 数量
+        rss_dir = data_base / "search_information" / "rss"
+        rss_db = rss_dir / f"{date}.db"
+        if rss_db.exists():
+            count = query_db(str(rss_db), "SELECT COUNT(*) as count FROM rss_items")
+            result["rss_count"].append(count[0]["count"] if count else 0)
+        else:
+            result["rss_count"].append(0)
+
+    return jsonify(result)
+
+
+@app.route('/api/search')
+def api_search():
+    """搜索新闻"""
+    query = request.args.get('q', '')
+    limit = int(request.args.get('limit', 50))
+
+    if not query:
+        return jsonify({"results": [], "total": 0})
+
+    data_base = Path(os.environ.get("DATA_BASE", "/app/data"))
+    news_dir = data_base / "search_information" / "news"
+
+    results = []
+    for db_file in sorted(news_dir.glob("*.db"), reverse=True)[:7]:  # 搜索最近7天
+        rows = query_db(
+            str(db_file),
+            "SELECT title, platform_id as source, url, created_at as date FROM news_items WHERE title LIKE ? LIMIT ?",
+            (f"%{query}%", limit - len(results))
+        )
+        results.extend(rows)
+        if len(results) >= limit:
+            break
+
+    return jsonify({"results": results[:limit], "total": len(results)})
+
+
 DASHBOARD_HTML = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - 信息分析系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; color: #333; }
@@ -282,6 +345,20 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         </div>
 
         <div class="section">
+            <h2>数据趋势（最近7天）</h2>
+            <canvas id="trendChart" height="200"></canvas>
+        </div>
+
+        <div class="section">
+            <h2>搜索新闻</h2>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <input type="text" id="searchInput" placeholder="输入关键词搜索..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                <button class="refresh-btn" onclick="searchNews()">搜索</button>
+            </div>
+            <div id="search-results"><div class="empty">输入关键词后点击搜索</div></div>
+        </div>
+
+        <div class="section">
             <h2>今日热榜信号</h2>
             <div id="trend-signals"><div class="empty">加载中...</div></div>
         </div>
@@ -336,6 +413,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 );
 
                 loadArchive();
+                loadTrend();
             } catch (e) {
                 console.error('加载失败:', e);
             }
@@ -349,6 +427,93 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             }
             el.innerHTML = items.map(template).join('');
         }
+
+        async function loadTrend() {
+            try {
+                const resp = await fetch('/api/trend?days=7');
+                const data = await resp.json();
+
+                const ctx = document.getElementById('trendChart').getContext('2d');
+                if (window.trendChart) {
+                    window.trendChart.destroy();
+                }
+                window.trendChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels,
+                        datasets: [
+                            {
+                                label: '热榜新闻',
+                                data: data.news_count,
+                                borderColor: '#1a1a2e',
+                                backgroundColor: 'rgba(26, 26, 46, 0.1)',
+                                tension: 0.4,
+                                fill: true
+                            },
+                            {
+                                label: 'RSS 文章',
+                                data: data.rss_count,
+                                borderColor: '#e94560',
+                                backgroundColor: 'rgba(233, 69, 96, 0.1)',
+                                tension: 0.4,
+                                fill: true
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            }
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error('加载趋势数据失败:', e);
+            }
+        }
+
+        async function searchNews() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query) {
+                document.getElementById('search-results').innerHTML = '<div class="empty">请输入搜索关键词</div>';
+                return;
+            }
+
+            try {
+                const resp = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=20`);
+                const data = await resp.json();
+                const el = document.getElementById('search-results');
+
+                if (data.results.length === 0) {
+                    el.innerHTML = `<div class="empty">未找到包含"${query}"的新闻</div>`;
+                    return;
+                }
+
+                el.innerHTML = `<div class="item"><div class="item-title">找到 ${data.total} 条结果</div></div>` +
+                    data.results.map(item =>
+                        `<div class="item"><div class="item-title">${item.title}</div><div class="item-meta"><span class="badge badge-source">${item.source}</span> ${item.date}</div></div>`
+                    ).join('');
+            } catch (e) {
+                console.error('搜索失败:', e);
+            }
+        }
+
+        // 回车搜索
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchNews();
+            }
+        });
 
         async function loadArchive() {
             try {
