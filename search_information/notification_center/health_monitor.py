@@ -43,7 +43,7 @@ class HealthMonitor:
             },
             'invest-backend': {
                 'type': 'http',
-                'url': 'http://invest-backend:5000/health',
+                'url': 'http://invest-backend:5000/api/health',
                 'check_interval': 300,
                 'alert_threshold': 3,
             },
