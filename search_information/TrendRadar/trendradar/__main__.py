@@ -1593,6 +1593,9 @@ class NewsAnalyzer:
                 current_results=results,
             )
 
+        # 写入任务队列（供终端2读取）
+        self._write_to_task_queue(stats, ai_result)
+
         # 打开浏览器（仅在非容器环境）
         if self._should_open_browser() and html_file:
             file_url = "file://" + str(Path(html_file).resolve())
@@ -1602,6 +1605,51 @@ class NewsAnalyzer:
             print(f"HTML报告已生成（Docker环境）: {html_file}")
 
         return html_file
+
+    def _write_to_task_queue(self, stats, ai_result):
+        """将分析结果写入任务队列（供终端2读取）"""
+        try:
+            from trendradar.collector.task_queue_writer import TaskQueueWriter
+
+            writer = TaskQueueWriter()
+
+            # 提取分析数据
+            news_count = sum(len(stat.get("titles", [])) for stat in stats) if stats else 0
+
+            # 从AI结果提取情绪分数和主题
+            sentiment_score = 0.5
+            key_themes = []
+            ai_summary = ""
+
+            if ai_result and ai_result.success:
+                # 从AI结果中提取关键主题
+                if ai_result.core_trends:
+                    ai_summary = ai_result.core_trends[:500]
+
+            # 构建分析数据
+            analysis_data = {
+                "news_count": news_count,
+                "sentiment_score": sentiment_score,
+                "key_themes": key_themes,
+                "ai_summary": ai_summary,
+                "alerts": [],
+                "analysis_time": self.ctx.format_time(),
+                "hotlist_count": news_count,
+                "rss_count": 0
+            }
+
+            # 写入队列
+            batch_id = writer.write_analysis_result(analysis_data, priority="normal")
+            if batch_id:
+                print(f"[队列] 分析结果已写入任务队列，批次ID: {batch_id}")
+            else:
+                print(f"[队列] 写入任务队列失败")
+
+        except Exception as e:
+            print(f"[队列] 写入任务队列出错: {e}")
+            if self.ctx.config.get("DEBUG", False):
+                import traceback
+                traceback.print_exc()
 
     def run(self) -> None:
         """执行分析流程"""
