@@ -29,38 +29,39 @@ class HealthMonitor:
         self.config = config or {}
 
         # 监控的服务
+        # 在 Docker 网络中，使用容器名称作为主机名
         self.services = self.config.get('services', {
             'trendradar': {
-                'type': 'container',
-                'check_interval': 300,  # 5分钟
-                'alert_threshold': 3,   # 连续失败3次告警
+                'type': 'process',  # 无HTTP端口，检查进程
+                'check_interval': 300,
+                'alert_threshold': 3,
             },
             'analyser': {
-                'type': 'container',
-                'check_interval': 600,  # 10分钟
+                'type': 'process',  # 无HTTP端口，检查进程
+                'check_interval': 600,
                 'alert_threshold': 3,
             },
             'invest-backend': {
                 'type': 'http',
-                'url': 'http://localhost:5000/health',
+                'url': 'http://invest-backend:5000/health',
                 'check_interval': 300,
                 'alert_threshold': 3,
             },
             'invest-frontend': {
                 'type': 'http',
-                'url': 'http://localhost:3000',
+                'url': 'http://invest-frontend:3000',
                 'check_interval': 300,
                 'alert_threshold': 3,
             },
             'notification-center': {
                 'type': 'http',
-                'url': 'http://localhost:5050/health',
+                'url': 'http://localhost:5050/health',  # 自己检查自己用 localhost
                 'check_interval': 300,
                 'alert_threshold': 3,
             },
             'dashboard': {
                 'type': 'http',
-                'url': 'http://localhost:5060',
+                'url': 'http://dashboard:5060',
                 'check_interval': 300,
                 'alert_threshold': 3,
             },
@@ -138,6 +139,29 @@ class HealthMonitor:
         except Exception as e:
             return False, f"检查失败: {str(e)}"
 
+    def check_process_status(self, service_name: str) -> Tuple[bool, str]:
+        """
+        检查进程状态（通过检查容器内的进程）
+
+        Returns:
+            (is_running, status_message)
+        """
+        try:
+            import subprocess
+            # 检查容器是否在运行（通过检查进程）
+            result = subprocess.run(
+                ['pgrep', '-f', service_name],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            if result.returncode == 0:
+                return True, "进程运行中"
+            else:
+                return False, "进程未找到"
+        except Exception as e:
+            return False, f"检查失败: {str(e)}"
+
     def check_service(self, service_name: str) -> Tuple[bool, str]:
         """
         检查单个服务状态
@@ -150,6 +174,9 @@ class HealthMonitor:
 
         if check_type == 'container':
             return self.check_container_status(service_name)
+        elif check_type == 'process':
+            # 对于 process 类型，尝试通过 docker socket 检查
+            return self.check_container_via_api(service_name)
         elif check_type == 'http':
             url = service_config.get('url', '')
             if url:
@@ -157,6 +184,63 @@ class HealthMonitor:
             return False, "未配置URL"
         else:
             return False, f"未知检查类型: {check_type}"
+
+    def check_container_via_api(self, container_name: str) -> Tuple[bool, str]:
+        """
+        通过 Docker API 检查容器状态
+
+        Returns:
+            (is_running, status_message)
+        """
+        try:
+            # 尝试通过 docker.sock 检查
+            import socket
+            import json
+
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.connect('/var/run/docker.sock')
+
+            request = f"GET /containers/{container_name}/json HTTP/1.1\r\nHost: localhost\r\n\r\n"
+            sock.send(request.encode())
+
+            response = b""
+            while True:
+                data = sock.recv(4096)
+                if not data:
+                    break
+                response += data
+
+            sock.close()
+
+            if b"200 OK" in response:
+                # 解析响应获取状态
+                body = response.split(b"\r\n\r\n", 1)[1] if b"\r\n\r\n" in response else b""
+                if body:
+                    container_info = json.loads(body)
+                    state = container_info.get('State', {})
+                    if state.get('Running'):
+                        return True, "运行中"
+                    else:
+                        return False, f"已停止: {state.get('Status', 'unknown')}"
+                return True, "运行中"
+            else:
+                return False, "容器不存在"
+
+        except FileNotFoundError:
+            # Docker socket 不存在，尝试 HTTP 方式
+            try:
+                req = urllib.request.Request(
+                    f"http://localhost:5050/health",
+                    method='GET'
+                )
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    if resp.status == 200:
+                        return True, "服务可达"
+            except:
+                pass
+            return False, "无法检查容器状态"
+        except Exception as e:
+            return False, f"检查失败: {str(e)}"
 
     def check_all_services(self) -> Dict[str, Dict]:
         """

@@ -75,6 +75,7 @@ services:
       - "5050:5050"
     volumes:
       - ./data/notification:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro  # 挂载 docker socket 用于健康检查
     env_file:
       - .env
     networks:
