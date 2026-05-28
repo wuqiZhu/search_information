@@ -1,7 +1,7 @@
 """统一通知中心服务
 
 HTTP API 服务，所有项目通过 POST /notify 发送通知。
-支持优先级调度、消息聚合、多渠道推送。
+支持优先级调度、消息聚合、多渠道推送、智能过滤、健康监控。
 
 使用方式：
     python -m notification_center.server
@@ -28,6 +28,20 @@ try:
 except ImportError:
     print("请安装 Flask: pip install flask")
     raise
+
+# 导入智能过滤和健康监控模块
+try:
+    from .smart_filter import get_smart_filter
+    from .health_monitor import get_health_monitor
+    SMART_FILTER_AVAILABLE = True
+except ImportError:
+    try:
+        from smart_filter import get_smart_filter
+        from health_monitor import get_health_monitor
+        SMART_FILTER_AVAILABLE = True
+    except ImportError:
+        SMART_FILTER_AVAILABLE = False
+        print("警告: 智能过滤或健康监控模块未找到，使用基础模式")
 
 logger = logging.getLogger(__name__)
 
@@ -220,7 +234,8 @@ def notify():
         "priority": "urgent|high|medium|low",
         "source": "来源项目名",
         "channel": "dingtalk|telegram",
-        "tags": ["标签1", "标签2"]
+        "tags": ["标签1", "标签2"],
+        "skip_filter": false  // 是否跳过智能过滤
     }
     """
     data = request.json
@@ -245,6 +260,25 @@ def notify():
         "timestamp": datetime.now().isoformat(),
     }
 
+    # 使用智能过滤（如果可用且未跳过）
+    skip_filter = data.get("skip_filter", False)
+    if SMART_FILTER_AVAILABLE and not skip_filter:
+        smart_filter = get_smart_filter()
+        should_send, reason = smart_filter.should_send_immediately(message)
+
+        if not should_send:
+            return jsonify({
+                "status": "filtered",
+                "reason": reason,
+                "message": "消息已被智能过滤"
+            }), 200
+
+        # 更新优先级（智能过滤可能调整）
+        determined_priority = smart_filter.determine_priority(text, message.get('tags', []))
+        if determined_priority != "silent":
+            message['priority'] = {"urgent": PRIORITY_URGENT, "high": PRIORITY_HIGH,
+                                   "medium": PRIORITY_MEDIUM, "low": PRIORITY_LOW}.get(determined_priority, priority)
+
     # 紧急和高优先级立即推送
     if priority <= PRIORITY_HIGH:
         if is_quiet_hours() and priority > PRIORITY_URGENT:
@@ -265,16 +299,66 @@ def notify():
 @app.route('/health', methods=['GET'])
 def health():
     """健康检查"""
-    return jsonify({
+    result = {
         "status": "ok",
         "config": {
             "dingtalk_configured": bool(config["dingtalk_webhook"]),
             "telegram_configured": bool(config["telegram_bot_token"]),
             "quiet_hours": f"{config['quiet_hours_start']}:00-{config['quiet_hours_end']}:00",
+            "smart_filter_enabled": SMART_FILTER_AVAILABLE,
         },
         "queue_size": sum(len(msgs) for msgs in aggregated_cache.values()),
         "timestamp": datetime.now().isoformat(),
-    })
+    }
+
+    # 添加智能过滤统计
+    if SMART_FILTER_AVAILABLE:
+        smart_filter = get_smart_filter()
+        result["smart_filter_stats"] = smart_filter.get_stats()
+
+    return jsonify(result)
+
+
+@app.route('/monitor/status', methods=['GET'])
+def monitor_status():
+    """获取监控状态"""
+    if not SMART_FILTER_AVAILABLE:
+        return jsonify({"error": "健康监控模块未启用"}), 503
+
+    monitor = get_health_monitor()
+    return jsonify(monitor.get_status())
+
+
+@app.route('/monitor/check', methods=['POST'])
+def monitor_check():
+    """手动触发服务检查"""
+    if not SMART_FILTER_AVAILABLE:
+        return jsonify({"error": "健康监控模块未启用"}), 503
+
+    monitor = get_health_monitor()
+    results = monitor.check_all_services()
+    return jsonify(results)
+
+
+@app.route('/monitor/report', methods=['GET'])
+def monitor_report():
+    """获取每日报告"""
+    if not SMART_FILTER_AVAILABLE:
+        return jsonify({"error": "健康监控模块未启用"}), 503
+
+    monitor = get_health_monitor()
+    report = monitor.generate_daily_report()
+    return jsonify({"report": report})
+
+
+@app.route('/filter/stats', methods=['GET'])
+def filter_stats():
+    """获取智能过滤统计"""
+    if not SMART_FILTER_AVAILABLE:
+        return jsonify({"error": "智能过滤模块未启用"}), 503
+
+    smart_filter = get_smart_filter()
+    return jsonify(smart_filter.get_stats())
 
 
 @app.route('/test', methods=['POST'])
@@ -312,8 +396,26 @@ def create_app():
     config["telegram_bot_token"] = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     config["telegram_chat_id"] = os.environ.get("TELEGRAM_CHAT_ID", "")
 
+    # 启动聚合消息处理线程
     worker = threading.Thread(target=background_worker, daemon=True)
     worker.start()
+
+    # 启动健康监控（如果可用）
+    if SMART_FILTER_AVAILABLE:
+        try:
+            monitor = get_health_monitor()
+            # 设置通知回调
+            def monitor_notify(message):
+                """监控告警通知回调"""
+                # 直接调用发送，跳过智能过滤
+                message['skip_filter'] = True
+                process_immediate(message)
+
+            monitor.set_notify_callback(monitor_notify)
+            monitor.start()
+            logger.info("健康监控已启动")
+        except Exception as e:
+            logger.error(f"启动健康监控失败: {e}")
 
     return app
 
