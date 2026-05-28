@@ -99,6 +99,26 @@ services:
     networks:
       - project-net
 
+  # 反馈学习服务
+  feedback-learner:
+    build:
+      context: ./Feedback_and_Learning
+      dockerfile: Dockerfile
+    container_name: feedback-learner
+    restart: always
+    volumes:
+      - ./Feedback_and_Learning/invest/scripts:/app/scripts
+      - ./data/feedback:/app/data
+      - ./data/invest:/app/data/invest:ro
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - project-net
+    depends_on:
+      - invest-backend
+
 networks:
   project-net:
     driver: bridge
