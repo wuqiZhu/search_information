@@ -36,9 +36,9 @@ class RSSFetcher:
         "rsshub.umzzz.com",
         "rss.spriple.org",
         "rsshub.rssforever.com",
-        "hub.slarker.me",
-        "rsshub.pseudoyu.com",
     ]
+
+    MIRROR_TIMEOUT = 8
 
     def __init__(
         self,
@@ -167,9 +167,10 @@ class RSSFetcher:
                     urls_to_try.append(alt_url)
 
         last_error = None
-        for url in urls_to_try:
+        for i, url in enumerate(urls_to_try):
+            timeout = self.timeout if i == 0 else self.MIRROR_TIMEOUT
             try:
-                response = self.session.get(url, timeout=self.timeout)
+                response = self.session.get(url, timeout=timeout)
                 response.raise_for_status()
 
                 parsed_items = self.parser.parse(response.text, url)
