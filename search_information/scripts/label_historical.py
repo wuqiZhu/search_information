@@ -38,7 +38,7 @@ USER_PROMPT_TEMPLATE = """分析以下新闻标题，输出JSON格式：
 标题：{title}"""
 
 
-def call_mimo(prompt, max_tokens=500):
+def call_mimo(prompt, max_tokens=2000):
     headers = {
         "Authorization": f"Bearer {MIMO_API_KEY}",
         "Content-Type": "application/json"
@@ -54,16 +54,15 @@ def call_mimo(prompt, max_tokens=500):
     }
     for attempt in range(MAX_RETRIES):
         try:
-            resp = requests.post(MIMO_API_URL, headers=headers, json=payload, timeout=30)
+            resp = requests.post(MIMO_API_URL, headers=headers, json=payload, timeout=60)
             resp.raise_for_status()
             data = resp.json()
             msg = data["choices"][0]["message"]
             content = msg.get("content", "") or ""
             reasoning = msg.get("reasoning_content", "") or ""
-            if content.strip():
-                return content
-            elif reasoning.strip():
-                return reasoning
+            text = content.strip() if content.strip() else reasoning.strip()
+            if text:
+                return text
             return None
         except Exception as e:
             if attempt < MAX_RETRIES - 1:
@@ -77,19 +76,27 @@ def analyze_single(title):
     if not title or len(title.strip()) < 5:
         return None
     prompt = USER_PROMPT_TEMPLATE.format(title=title.strip())
-    result_text = call_mimo(prompt, max_tokens=200)
+    result_text = call_mimo(prompt, max_tokens=2000)
     if not result_text:
         return None
     try:
         return json.loads(result_text)
     except:
-        start = result_text.find('{')
-        end = result_text.rfind('}') + 1
-        if start >= 0 and end > start:
-            try:
-                return json.loads(result_text[start:end])
-            except:
-                pass
+        pass
+    start = result_text.find('{')
+    end = result_text.rfind('}') + 1
+    if start >= 0 and end > start:
+        try:
+            return json.loads(result_text[start:end])
+        except:
+            pass
+    import re
+    json_pattern = re.search(r'\{[^{}]*"sentiment"[^{}]*\}', result_text)
+    if json_pattern:
+        try:
+            return json.loads(json_pattern.group())
+        except:
+            pass
     return None
 
 
