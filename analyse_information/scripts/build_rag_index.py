@@ -55,9 +55,9 @@ def main():
     config = {
         "knowledge_base_path": args.kb_path or str(project_root / "knowledge_base" / "obsidian"),
         "vector_db_path": str(project_root / "knowledge_base" / "vectors"),
-        "ai_api_key": os.environ.get("DEEPSEEK_API_KEY", ""),
-        "ai_api_base": os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"),
-        "ai_model": os.environ.get("DEEPSEEK_MODEL", "deepseek-chat"),
+        "ai_api_key": os.environ.get("DEEPSEEK_API_KEY", "") or os.environ.get("MIMO_API_KEY", ""),
+        "ai_api_base": os.environ.get("DEEPSEEK_BASE_URL", "https://token-plan-cn.xiaomimimo.com/v1"),
+        "ai_model": os.environ.get("DEEPSEEK_MODEL", "mimo-v2.5-pro"),
     }
 
     retriever = RAGRetriever(config)

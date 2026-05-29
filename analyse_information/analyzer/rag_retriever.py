@@ -40,9 +40,9 @@ class RAGRetriever:
         """
         self.kb_path = Path(config.get("knowledge_base_path", "./knowledge_base/obsidian"))
         self.vector_db_path = Path(config.get("vector_db_path", "./knowledge_base/vectors"))
-        self.ai_api_key = config.get("ai_api_key", os.environ.get("DEEPSEEK_API_KEY", ""))
-        self.ai_api_base = config.get("ai_api_base", os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"))
-        self.ai_model = config.get("ai_model", os.environ.get("DEEPSEEK_MODEL", "deepseek-chat"))
+        self.ai_api_key = config.get("ai_api_key", os.environ.get("DEEPSEEK_API_KEY", "")) or os.environ.get("MIMO_API_KEY", "")
+        self.ai_api_base = config.get("ai_api_base", os.environ.get("DEEPSEEK_BASE_URL", "https://token-plan-cn.xiaomimimo.com/v1"))
+        self.ai_model = config.get("ai_model", os.environ.get("DEEPSEEK_MODEL", "mimo-v2.5-pro"))
         
         self._vector_db = None
         self._documents = []
