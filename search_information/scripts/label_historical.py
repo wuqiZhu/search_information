@@ -38,7 +38,7 @@ USER_PROMPT_TEMPLATE = """分析以下新闻标题，输出JSON格式：
 标题：{title}"""
 
 
-def call_mimo(prompt, max_tokens=200):
+def call_mimo(prompt, max_tokens=500):
     headers = {
         "Authorization": f"Bearer {MIMO_API_KEY}",
         "Content-Type": "application/json"
@@ -56,7 +56,15 @@ def call_mimo(prompt, max_tokens=200):
         try:
             resp = requests.post(MIMO_API_URL, headers=headers, json=payload, timeout=30)
             resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"]
+            data = resp.json()
+            msg = data["choices"][0]["message"]
+            content = msg.get("content", "") or ""
+            reasoning = msg.get("reasoning_content", "") or ""
+            if content.strip():
+                return content
+            elif reasoning.strip():
+                return reasoning
+            return None
         except Exception as e:
             if attempt < MAX_RETRIES - 1:
                 time.sleep(2 ** attempt)
