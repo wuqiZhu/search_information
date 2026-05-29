@@ -99,35 +99,35 @@ rss:
 
     - id: "juejin-embedded"
       name: "掘金-嵌入式"
-      url: "https://rsshub.app/juejin/tag/%E5%B5%8C%E5%85%A5%E5%BC%8F"
+      url: "https://rsshub.umzzz.com/juejin/tag/%E5%B5%8C%E5%85%A5%E5%BC%8F"
 
     - id: "juejin-linux"
       name: "掘金-Linux"
-      url: "https://rsshub.app/juejin/tag/Linux"
+      url: "https://rsshub.umzzz.com/juejin/tag/Linux"
 
     - id: "juejin-cpp"
       name: "掘金-C++"
-      url: "https://rsshub.app/juejin/tag/C%2B%2B"
+      url: "https://rsshub.umzzz.com/juejin/tag/C%2B%2B"
 
     - id: "juejin-campus"
       name: "掘金-校招"
-      url: "https://rsshub.app/juejin/tag/%E6%A0%A1%E6%8B%9B"
+      url: "https://rsshub.umzzz.com/juejin/tag/%E6%A0%A1%E6%8B%9B"
 
     - id: "nowcoder-embedded"
       name: "牛客-嵌入式面经"
-      url: "https://rsshub.app/nowcoder/discuss/644"
+      url: "https://rsshub.umzzz.com/nowcoder/discuss/644"
 
     - id: "nowcoder-cpp"
       name: "牛客-C++面经"
-      url: "https://rsshub.app/nowcoder/discuss/637"
+      url: "https://rsshub.umzzz.com/nowcoder/discuss/637"
 
     - id: "zhihu-embedded"
       name: "知乎-嵌入式"
-      url: "https://rsshub.app/zhihu/topic/19550759"
+      url: "https://rsshub.umzzz.com/zhihu/topic/19550759"
 
     - id: "zhihu-jobs"
       name: "知乎-求职"
-      url: "https://rsshub.app/zhihu/topic/21182810"
+      url: "https://rsshub.umzzz.com/zhihu/topic/21182810"
 
     - id: "v2ex-jobs"
       name: "V2EX-求职"
@@ -143,11 +143,11 @@ rss:
 
     - id: "36kr-embedded"
       name: "36Kr-嵌入式"
-      url: "https://rsshub.app/36kr/search/%E5%B5%8C%E5%85%A5%E5%BC%8F"
+      url: "https://rsshub.umzzz.com/36kr/search/%E5%B5%8C%E5%85%A5%E5%BC%8F"
 
     - id: "csdn-embedded"
       name: "CSDN-嵌入式"
-      url: "https://rsshub.app/csdn/blog/nav/embedded"
+      url: "https://rsshub.umzzz.com/csdn/blog/nav/embedded"
 
     - id: "phoronix"
       name: "Phoronix"
@@ -168,31 +168,31 @@ rss:
     # 财经投资相关RSS源
     - id: "xueqiu"
       name: "雪球热帖"
-      url: "https://rsshub.app/xueqiu/hot"
+      url: "https://rsshub.umzzz.com/xueqiu/hot"
 
     - id: "eastmoney"
       name: "东方财富"
-      url: "https://rsshub.app/eastmoney/report/strategyreport"
+      url: "https://rsshub.umzzz.com/eastmoney/report/strategyreport"
 
     - id: "sina-finance"
       name: "新浪财经"
-      url: "https://rsshub.app/sina/finance/roll"
+      url: "https://rsshub.umzzz.com/sina/finance/roll"
 
     - id: "wallstreetcn"
       name: "华尔街见闻"
-      url: "https://rsshub.app/wallstreetcn/news/global"
+      url: "https://rsshub.umzzz.com/wallstreetcn/news/global"
 
     - id: "cls"
       name: "财联社"
-      url: "https://rsshub.app/cls/telegraph"
+      url: "https://rsshub.umzzz.com/cls/telegraph"
 
     - id: "gelonghui"
       name: "格隆汇"
-      url: "https://rsshub.app/gelonghui/home"
+      url: "https://rsshub.umzzz.com/gelonghui/home"
 
     - id: "zhitongcaijing"
       name: "智通财经"
-      url: "https://rsshub.app/zhitongcaijing/recommend"
+      url: "https://rsshub.umzzz.com/zhitongcaijing/recommend"
 
     # 自定义源示例
     # - id: "custom-feed"

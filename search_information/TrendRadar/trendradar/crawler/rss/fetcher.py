@@ -32,6 +32,14 @@ class RSSFeedConfig:
 class RSSFetcher:
     """RSS 抓取器"""
 
+    RSSHUB_MIRRORS = [
+        "rsshub.umzzz.com",
+        "rss.spriple.org",
+        "rsshub.rssforever.com",
+        "hub.slarker.me",
+        "rsshub.pseudoyu.com",
+    ]
+
     def __init__(
         self,
         feeds: List[RSSFeedConfig],
@@ -72,9 +80,20 @@ class RSSFetcher:
         """创建请求会话"""
         session = requests.Session()
         session.headers.update({
-            "User-Agent": "TrendRadar/2.0 RSS Reader (https://github.com/trendradar)",
-            "Accept": "application/feed+json, application/json, application/rss+xml, application/atom+xml, application/xml, text/xml, */*",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
             "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
+            "Cache-Control": "no-cache",
+            "Sec-Ch-Ua": '"Chromium";v="131", "Not_A Brand";v="24"',
+            "Sec-Ch-Ua-Mobile": "?0",
+            "Sec-Ch-Ua-Platform": '"Windows"',
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1",
+            "Upgrade-Insecure-Requests": "1",
         })
 
         if self.use_proxy and self.proxy_url:
@@ -137,61 +156,64 @@ class RSSFetcher:
         Returns:
             (条目列表, 错误信息) 元组
         """
-        try:
-            response = self.session.get(feed.url, timeout=self.timeout)
-            response.raise_for_status()
+        urls_to_try = [feed.url]
 
-            parsed_items = self.parser.parse(response.text, feed.url)
-
-            # 限制条目数量（0=不限制）
-            if feed.max_items > 0:
-                parsed_items = parsed_items[:feed.max_items]
-
-            # 转换为 RSSItem（使用配置的时区）
-            now = get_configured_time(self.timezone)
-            crawl_time = now.strftime("%H:%M")
-            items = []
-
-            for parsed in parsed_items:
-                item = RSSItem(
-                    title=parsed.title,
-                    feed_id=feed.id,
-                    feed_name=feed.name,
-                    url=parsed.url,
-                    published_at=parsed.published_at or "",
-                    summary=parsed.summary or "",
-                    author=parsed.author or "",
-                    crawl_time=crawl_time,
-                    first_time=crawl_time,
-                    last_time=crawl_time,
-                    count=1,
+        if "rsshub" in feed.url:
+            for mirror in self.RSSHUB_MIRRORS:
+                alt_url = feed.url.replace(
+                    feed.url.split("/")[2], mirror
                 )
-                items.append(item)
+                if alt_url not in urls_to_try:
+                    urls_to_try.append(alt_url)
 
-            # 注意：新鲜度过滤已移至推送阶段（_convert_rss_items_to_list）
-            # 这样所有文章都会存入数据库，但旧文章不会推送
-            print(f"[RSS] {feed.name}: 获取 {len(items)} 条")
-            return items, None
+        last_error = None
+        for url in urls_to_try:
+            try:
+                response = self.session.get(url, timeout=self.timeout)
+                response.raise_for_status()
 
-        except requests.Timeout:
-            error = f"请求超时 ({self.timeout}s)"
-            print(f"[RSS] {feed.name}: {error}")
-            return [], error
+                parsed_items = self.parser.parse(response.text, url)
 
-        except requests.RequestException as e:
-            error = f"请求失败: {e}"
-            print(f"[RSS] {feed.name}: {error}")
-            return [], error
+                if feed.max_items > 0:
+                    parsed_items = parsed_items[:feed.max_items]
 
-        except ValueError as e:
-            error = f"解析失败: {e}"
-            print(f"[RSS] {feed.name}: {error}")
-            return [], error
+                now = get_configured_time(self.timezone)
+                crawl_time = now.strftime("%H:%M")
+                items = []
 
-        except Exception as e:
-            error = f"未知错误: {e}"
-            print(f"[RSS] {feed.name}: {error}")
-            return [], error
+                for parsed in parsed_items:
+                    item = RSSItem(
+                        title=parsed.title,
+                        feed_id=feed.id,
+                        feed_name=feed.name,
+                        url=parsed.url,
+                        published_at=parsed.published_at or "",
+                        summary=parsed.summary or "",
+                        author=parsed.author or "",
+                        crawl_time=crawl_time,
+                        first_time=crawl_time,
+                        last_time=crawl_time,
+                        count=1,
+                    )
+                    items.append(item)
+
+                mirror_info = ""
+                if url != feed.url:
+                    mirror_info = f" (via {url.split('/')[2]})"
+                print(f"[RSS] {feed.name}: 获取 {len(items)} 条{mirror_info}")
+                return items, None
+
+            except requests.Timeout:
+                last_error = f"请求超时 ({self.timeout}s)"
+            except requests.RequestException as e:
+                last_error = f"请求失败: {e}"
+            except ValueError as e:
+                last_error = f"解析失败: {e}"
+            except Exception as e:
+                last_error = f"未知错误: {e}"
+
+        print(f"[RSS] {feed.name}: 所有镜像均失败 - {last_error}")
+        return [], last_error
 
     def fetch_all(self) -> RSSData:
         """
