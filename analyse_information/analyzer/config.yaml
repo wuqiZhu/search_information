@@ -32,7 +32,7 @@ analyzer:
     retention_days: 90
 
   rss_source: "../../search_information/TrendRadar/config.yaml"
-  find_job_source: "../../find_job/config.yaml"
+  find_job_source: "" # 找工作岗位来源（暂未配置）
 
   relevance:
     keywords:
