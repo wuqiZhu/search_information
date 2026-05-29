@@ -136,6 +136,10 @@ services:
       - .env
     environment:
       - PYTHONUNBUFFERED=1
+      - MIMO_API_KEY=${MIMO_API_KEY}
+      - MIMO_API_BASE=${MIMO_API_BASE:-https://token-plan-cn.xiaomimimo.com/v1}
+      - MIMO_MODEL=${MIMO_MODEL:-mimo-v2.5-pro}
+      - USE_MIMO=true
     networks:
       - project-net
     depends_on:
