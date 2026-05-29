@@ -276,6 +276,54 @@ def api_search():
     return jsonify({"results": results[:limit], "total": len(results)})
 
 
+@app.route('/api/semantic-search', methods=['POST'])
+def api_semantic_search():
+    """语义搜索（调用语义搜索API服务）"""
+    data = request.get_json()
+    if not data or 'query' not in data:
+        return jsonify({'error': '缺少query参数'}), 400
+
+    semantic_search_url = os.environ.get('SEMANTIC_SEARCH_URL', 'http://semantic-search:5070')
+    
+    try:
+        import requests
+        response = requests.post(
+            f"{semantic_search_url}/api/search",
+            json=data,
+            timeout=10
+        )
+        return jsonify(response.json())
+    except ImportError:
+        return jsonify({'error': 'requests模块未安装'}), 500
+    except Exception as e:
+        logger.error(f"语义搜索失败: {e}")
+        return jsonify({'error': f'语义搜索服务不可用: {str(e)}'}), 503
+
+
+@app.route('/api/rag-ask', methods=['POST'])
+def api_rag_ask():
+    """RAG问答（调用语义搜索API服务）"""
+    data = request.get_json()
+    if not data or 'question' not in data:
+        return jsonify({'error': '缺少question参数'}), 400
+
+    semantic_search_url = os.environ.get('SEMANTIC_SEARCH_URL', 'http://semantic-search:5070')
+    
+    try:
+        import requests
+        response = requests.post(
+            f"{semantic_search_url}/api/ask",
+            json=data,
+            timeout=30
+        )
+        return jsonify(response.json())
+    except ImportError:
+        return jsonify({'error': 'requests模块未安装'}), 500
+    except Exception as e:
+        logger.error(f"RAG问答失败: {e}")
+        return jsonify({'error': f'语义搜索服务不可用: {str(e)}'}), 503
+
+
 DASHBOARD_HTML = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -356,6 +404,26 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 <button class="refresh-btn" onclick="searchNews()">搜索</button>
             </div>
             <div id="search-results"><div class="empty">输入关键词后点击搜索</div></div>
+        </div>
+
+        <div class="section">
+            <h2>语义搜索</h2>
+            <p style="color: #666; font-size: 14px; margin-bottom: 15px;">使用AI理解语义，找到相关内容</p>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <input type="text" id="semanticInput" placeholder="输入自然语言查询，如：最近半导体行业有什么新闻？" style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                <button class="refresh-btn" onclick="semanticSearch()">语义搜索</button>
+            </div>
+            <div id="semantic-results"><div class="empty">输入自然语言查询后点击语义搜索</div></div>
+        </div>
+
+        <div class="section">
+            <h2>智能问答</h2>
+            <p style="color: #666; font-size: 14px; margin-bottom: 15px;">基于知识库的AI问答，支持复杂问题</p>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <input type="text" id="askInput" placeholder="输入问题，如：上周有哪些关于嵌入式的重要新闻？" style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                <button class="refresh-btn" onclick="ragAsk()">提问</button>
+            </div>
+            <div id="ask-results"><div class="empty">输入问题后点击提问</div></div>
         </div>
 
         <div class="section">

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """RAG 知识库检索模块
 
 将 Obsidian 知识库中的文章向量化，支持语义检索和问答。
@@ -42,8 +43,26 @@ class RAGRetriever:
         self.ai_api_key = config.get("ai_api_key", os.environ.get("DEEPSEEK_API_KEY", ""))
         self.ai_api_base = config.get("ai_api_base", os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"))
         self.ai_model = config.get("ai_model", os.environ.get("DEEPSEEK_MODEL", "deepseek-chat"))
-        self._index = None
+        
+        self._vector_db = None
         self._documents = []
+        self._use_chromadb = False
+
+    def _init_vector_db(self):
+        """初始化向量数据库"""
+        try:
+            from analyzer.vector_db import VectorDB
+            self._vector_db = VectorDB(
+                persist_directory=str(self.vector_db_path),
+                collection_name="knowledge_base"
+            )
+            if self._vector_db.collection:
+                self._use_chromadb = True
+                logger.info("ChromaDB向量数据库初始化成功")
+            else:
+                logger.warning("ChromaDB初始化失败，回退到TF-IDF模式")
+        except ImportError:
+            logger.warning("ChromaDB模块导入失败，使用TF-IDF模式")
 
     def index_knowledge_base(self, force_rebuild: bool = False) -> int:
         """
@@ -55,6 +74,32 @@ class RAGRetriever:
         Returns:
             索引的文档数量
         """
+        if not self._vector_db:
+            self._init_vector_db()
+
+        if self._use_chromadb and self._vector_db:
+            return self._index_with_chromadb(force_rebuild)
+        else:
+            return self._index_with_tfidf(force_rebuild)
+
+    def _index_with_chromadb(self, force_rebuild: bool = False) -> int:
+        """使用ChromaDB索引知识库"""
+        if force_rebuild:
+            logger.info("强制重建ChromaDB索引...")
+            self._vector_db.clear()
+
+        stats = self._vector_db.get_stats()
+        if stats.get('total_count', 0) > 0 and not force_rebuild:
+            logger.info(f"ChromaDB已有 {stats['total_count']} 篇文档，跳过索引")
+            return stats['total_count']
+
+        logger.info(f"开始索引知识库: {self.kb_path}")
+        count = self._vector_db.import_from_obsidian(str(self.kb_path))
+        logger.info(f"ChromaDB索引完成: {count} 篇文档")
+        return count
+
+    def _index_with_tfidf(self, force_rebuild: bool = False) -> int:
+        """使用TF-IDF索引知识库"""
         index_file = self.vector_db_path / "index.json"
 
         if not force_rebuild and index_file.exists():
@@ -62,13 +107,11 @@ class RAGRetriever:
                 with open(index_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     self._documents = data.get("documents", [])
-                    self._index = data.get("index", None)
                     logger.info(f"加载已有索引: {len(self._documents)} 篇文档")
                     return len(self._documents)
             except Exception as e:
                 logger.warning(f"加载索引失败: {e}，将重建")
 
-        # 扫描知识库
         self._documents = []
         for md_file in self.kb_path.rglob("*.md"):
             try:
@@ -79,20 +122,15 @@ class RAGRetriever:
             except Exception as e:
                 logger.warning(f"解析文件失败 {md_file}: {e}")
 
-        # 构建简单索引（基于关键词的倒排索引）
-        self._index = self._build_index(self._documents)
-
-        # 保存索引
         self.vector_db_path.mkdir(parents=True, exist_ok=True)
         with open(index_file, 'w', encoding='utf-8') as f:
             json.dump({
                 "documents": self._documents,
-                "index": self._index,
                 "built_at": datetime.now().isoformat(),
                 "count": len(self._documents)
             }, f, ensure_ascii=False, indent=2)
 
-        logger.info(f"索引构建完成: {len(self._documents)} 篇文档")
+        logger.info(f"TF-IDF索引构建完成: {len(self._documents)} 篇文档")
         return len(self._documents)
 
     def search(self, query: str, top_k: int = 5, min_score: float = 0.1) -> List[Dict[str, Any]]:
@@ -107,13 +145,42 @@ class RAGRetriever:
         Returns:
             检索结果列表
         """
+        if not self._vector_db:
+            self._init_vector_db()
+
+        if self._use_chromadb and self._vector_db:
+            return self._search_with_chromadb(query, top_k)
+        else:
+            return self._search_with_tfidf(query, top_k, min_score)
+
+    def _search_with_chromadb(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+        """使用ChromaDB语义检索"""
+        results = self._vector_db.search(query, n_results=top_k)
+        
+        formatted_results = []
+        for item in results:
+            metadata = item.get('metadata', {})
+            formatted_results.append({
+                'title': metadata.get('title', ''),
+                'summary': item.get('content', '')[:200],
+                'category': metadata.get('category', ''),
+                'date': metadata.get('date', ''),
+                'source': metadata.get('source', ''),
+                'path': metadata.get('path', ''),
+                'score': round(1 - item.get('distance', 0), 3),
+                'id': item.get('id', '')
+            })
+        
+        return formatted_results
+
+    def _search_with_tfidf(self, query: str, top_k: int = 5, min_score: float = 0.1) -> List[Dict[str, Any]]:
+        """使用TF-IDF检索"""
         if not self._documents:
             self.index_knowledge_base()
 
         if not self._documents:
             return []
 
-        # 使用 TF-IDF 风格的检索
         query_terms = self._tokenize(query)
         scores = []
 
@@ -122,7 +189,6 @@ class RAGRetriever:
             if score >= min_score:
                 scores.append((i, score))
 
-        # 按分数排序
         scores.sort(key=lambda x: x[1], reverse=True)
 
         results = []
@@ -151,7 +217,6 @@ class RAGRetriever:
         Returns:
             包含 answer 和 sources 的字典
         """
-        # 检索相关文档
         results = self.search(question, top_k=top_k)
 
         if not results:
@@ -161,14 +226,12 @@ class RAGRetriever:
                 "confidence": 0
             }
 
-        # 构建上下文
         context_parts = []
         for i, r in enumerate(results):
             context_parts.append(f"[{i+1}] {r['title']} ({r['date']}, {r['category']})\n{r['summary']}")
 
         context = "\n\n".join(context_parts)
 
-        # 构建 prompt
         prompt = f"""基于以下知识库内容回答用户问题。如果知识库中没有相关信息，请如实说明。
 
 知识库内容：
@@ -178,7 +241,6 @@ class RAGRetriever:
 
 请用中文回答，简洁明了，引用信息时标注来源编号如 [1]。"""
 
-        # 调用 AI
         try:
             import urllib.request
             url = f"{self.ai_api_base}/chat/completions"
@@ -223,7 +285,6 @@ class RAGRetriever:
         date = ""
         source = ""
 
-        # 解析 frontmatter
         in_frontmatter = False
         for line in lines:
             if line.strip() == '---':
@@ -239,7 +300,6 @@ class RAGRetriever:
                 elif line.startswith('source:'):
                     source = line.split(':', 1)[1].strip().strip('"')
 
-        # 提取摘要
         in_summary = False
         for line in lines:
             if '一句话总结' in line:
@@ -254,7 +314,6 @@ class RAGRetriever:
                     break
 
         if not title:
-            # 从第一个 # 标题提取
             for line in lines:
                 if line.startswith('# '):
                     title = line[2:].strip()
@@ -273,25 +332,11 @@ class RAGRetriever:
             "content": content[:2000],
         }
 
-    def _build_index(self, documents: List[Dict]) -> Dict:
-        """构建简单倒排索引"""
-        index = {}
-        for i, doc in enumerate(documents):
-            terms = self._tokenize(doc.get("title", "") + " " + doc.get("summary", ""))
-            for term in terms:
-                if term not in index:
-                    index[term] = []
-                index[term].append(i)
-        return index
-
     def _tokenize(self, text: str) -> List[str]:
         """简单分词（中英文混合）"""
         import re
-        # 英文单词
         english_words = re.findall(r'[a-zA-Z]+', text.lower())
-        # 中文字符（连续）
         chinese_chars = re.findall(r'[\u4e00-\u9fff]+', text)
-        # 中文二元组
         bigrams = []
         for chars in chinese_chars:
             for i in range(len(chars) - 1):
@@ -306,14 +351,30 @@ class RAGRetriever:
         if not query_terms or not doc_terms:
             return 0
 
-        # 计算匹配的查询词比例
         matched = sum(1 for t in query_terms if t in doc_terms)
         score = matched / len(query_terms) if query_terms else 0
 
-        # 标题匹配加权
         title_terms = set(self._tokenize(doc.get("title", "")))
         title_matched = sum(1 for t in query_terms if t in title_terms)
         if title_matched > 0:
             score += 0.3 * (title_matched / len(query_terms))
 
         return min(score, 1.0)
+
+    def get_stats(self) -> Dict[str, Any]:
+        """获取检索器统计信息"""
+        if not self._vector_db:
+            self._init_vector_db()
+
+        if self._use_chromadb and self._vector_db:
+            return {
+                'mode': 'chromadb',
+                'available': True,
+                **self._vector_db.get_stats()
+            }
+        else:
+            return {
+                'mode': 'tfidf',
+                'available': True,
+                'total_count': len(self._documents)
+            }

@@ -33,6 +33,28 @@ services:
     depends_on:
       - trendradar
 
+  # 语义搜索API服务
+  semantic-search:
+    build:
+      context: ./search_information/analyse_information
+      dockerfile: Dockerfile
+    container_name: semantic-search
+    command: python analyzer/search_api.py --host 0.0.0.0 --port 5070
+    restart: always
+    ports:
+      - "5070:5070"
+    volumes:
+      - ./data/knowledge_base:/app/knowledge_base
+    env_file:
+      - .env
+    environment:
+      - KB_PATH=/app/knowledge_base/obsidian
+      - VECTOR_DB_PATH=/app/knowledge_base/vectors
+    networks:
+      - project-net
+    depends_on:
+      - analyser
+
   # invest - 投资分析后端
   invest-backend:
     build:
