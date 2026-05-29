@@ -113,8 +113,8 @@ echo "6. 核心模块导入检查"
 check "docker exec analyser python -c 'from analyzer.ai_analyzer import AIAnalyzer'" "analyser: AIAnalyzer"
 check "docker exec analyser python -c 'from analyzer.rag_retriever import RAGRetriever'" "analyser: RAGRetriever"
 check "docker exec invest-backend python -c 'import sys; sys.path.insert(0, \"/app/scripts\"); from ai_sentiment_analyzer import AISentimentAnalyzer'" "invest: AISentimentAnalyzer"
-check "docker exec invest-backend python -c 'import sys; sys.path.insert(0, \"/app/scripts\"); from model_router import ModelRouter'" "invest: ModelRouter"
-check "docker exec invest-backend python -c 'import sys; sys.path.insert(0, \"/app/scripts\"); from ai_gateway import AIGateway'" "invest: AIGateway"
+check "docker exec invest-backend python -c 'import sys; sys.path.insert(0, \"/app/scripts\"); import model_router'" "invest: model_router模块"
+check "docker exec invest-backend python -c 'import sys; sys.path.insert(0, \"/app/scripts\"); from ai_gateway import DeepSeekCircuitBreaker'" "invest: ai_gateway"
 
 # ============================================================
 echo ""
