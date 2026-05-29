@@ -123,25 +123,45 @@ class AIAnalyzer:
         self.api_key = os.environ.get("DEEPSEEK_API_KEY", config.get("api_key", ""))
         self.api_base = config.get("api_base", "https://api.deepseek.com/v1")
         self.model = config.get("model", "deepseek-chat")
+        self.mimo_api_key = os.environ.get("MIMO_API_KEY", config.get("mimo_api_key", ""))
+        self.mimo_api_base = config.get("mimo_api_base", "https://token-plan-cn.xiaomimimo.com/v1")
+        self.mimo_model = config.get("mimo_model", "openai/mimo-v2.5-pro")
         self.max_tokens = config.get("max_tokens", 2000)
         self.temperature = config.get("temperature", 0.3)
         self.token_tracker = TokenTracker()
-        self.max_calls = config.get("max_calls", 50)
+        self.max_calls = config.get("max_calls", 0)
+        self.enable_deep_analysis = config.get("enable_deep_analysis_for_relevant", False)
+        self.use_mimo = os.environ.get("USE_MIMO", "true").lower() == "true"
 
         if self.api_key.startswith("${"):
             env_key = self.api_key.strip("${}")
             self.api_key = os.environ.get(env_key, "")
+        if self.mimo_api_key.startswith("${"):
+            env_key = self.mimo_api_key.strip("${}")
+            self.mimo_api_key = os.environ.get(env_key, "")
 
-    def _call_api(self, prompt: str, max_tokens: int = None) -> tuple:
-        if self.token_tracker.call_count >= self.max_calls:
-            raise RuntimeError(f"已达到 API 调用上限 ({self.max_calls})，本次运行共消耗 {self.token_tracker.total_tokens} tokens")
+    def _call_api(self, prompt: str, max_tokens: int = None, use_mimo: bool = None) -> tuple:
+        if use_mimo is None:
+            use_mimo = self.use_mimo
+
+        if self.max_calls > 0 and self.token_tracker.call_count >= self.max_calls:
+            raise RuntimeError(f"已达到 API 调用上限 ({self.max_calls})")
+
+        if use_mimo and self.mimo_api_key:
+            api_key = self.mimo_api_key
+            api_base = self.mimo_api_base
+            model = self.mimo_model
+        else:
+            api_key = self.api_key
+            api_base = self.api_base
+            model = self.model
 
         headers = {
-            "Authorization": f"Bearer {self.api_key}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
         payload = {
-            "model": self.model,
+            "model": model,
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": max_tokens or self.max_tokens,
             "temperature": self.temperature,
@@ -149,7 +169,7 @@ class AIAnalyzer:
 
         try:
             resp = requests.post(
-                f"{self.api_base}/chat/completions",
+                f"{api_base}/chat/completions",
                 headers=headers,
                 json=payload,
                 timeout=120,
@@ -358,3 +378,31 @@ class AIAnalyzer:
 
     def analyze(self, title: str, content: str, config: dict, preferences: dict = None) -> dict:
         return self.analyze_unified(title, content, config, preferences)
+
+    def score_relevance(self, title: str, summary: str) -> dict:
+        prompt = RELEVANCE_KEYWORDS_PROMPT.format(title=title, summary=summary[:2000])
+        try:
+            raw, _ = self._call_api(prompt, max_tokens=50, use_mimo=True)
+            return self._parse_json_response(raw)
+        except Exception as e:
+            logger.warning("MiMo相关性评分失败: %s", e)
+            return {"score": 5, "reason": "评分失败，默认中等"}
+
+    def classify(self, title: str, content: str, categories: list) -> str:
+        cat_list = ", ".join([c.get("name", "") for c in categories])
+        prompt = f"将以下内容归入最合适的类别。可选类别：{cat_list}。只输出类别名称。\n\n标题：{title}\n内容：{content[:2000]}"
+        try:
+            raw, _ = self._call_api(prompt, max_tokens=20, use_mimo=True)
+            return raw.strip()
+        except Exception as e:
+            logger.warning("MiMo分类失败: %s", e)
+            return self._categorize_by_keywords(content, categories)
+
+    def summarize(self, title: str, content: str) -> str:
+        prompt = f"用一句话总结以下内容的核心要点，不超过50字。\n\n标题：{title}\n内容：{content[:3000]}"
+        try:
+            raw, _ = self._call_api(prompt, max_tokens=100, use_mimo=True)
+            return raw.strip()
+        except Exception as e:
+            logger.warning("MiMo总结失败: %s", e)
+            return ""
