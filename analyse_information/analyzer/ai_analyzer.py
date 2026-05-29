@@ -124,8 +124,8 @@ class AIAnalyzer:
         self.mimo_api_base = config.get("mimo_api_base", "https://token-plan-cn.xiaomimimo.com/v1")
         self.mimo_model = config.get("mimo_model", "mimo-v2.5-pro")
         self.api_key = os.environ.get("DEEPSEEK_API_KEY", "") or self.mimo_api_key
-        self.api_base = config.get("api_base", "https://api.deepseek.com/v1")
-        self.model = config.get("model", "deepseek-chat")
+        self.api_base = config.get("api_base", "https://token-plan-cn.xiaomimimo.com/v1")
+        self.model = config.get("model", "mimo-v2.5-pro")
         self.max_tokens = config.get("max_tokens", 2000)
         self.temperature = config.get("temperature", 0.3)
         self.token_tracker = TokenTracker()
