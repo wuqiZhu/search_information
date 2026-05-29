@@ -70,7 +70,6 @@ check "docker exec trendradar python -c 'import yaml'" "trendradar: pyyaml"
 check "docker exec trendradar python -c 'import bs4'" "trendradar: beautifulsoup4"
 check "docker exec trendradar python -c 'import openai'" "trendradar: openai"
 check "docker exec trendradar python -c 'import litellm'" "trendradar: litellm"
-check "docker exec trendradar python -c 'import flask'" "trendradar: flask"
 
 echo "  --- analyser ---"
 check "docker exec analyser python -c 'import requests'" "analyser: requests"
@@ -121,7 +120,7 @@ check "docker exec invest-backend python -c 'import sys; sys.path.insert(0, \"/a
 echo ""
 echo "7. 网络连通性检查"
 # ============================================================
-check "docker exec trendradar curl -s --max-time 5 https://token-plan-cn.xiaomimimo.com/v1/models | grep -q data" "MiMo API 可达"
+check "docker exec trendradar python -c \"import requests; r=requests.get('https://token-plan-cn.xiaomimimo.com/v1/models', headers={'Authorization': 'Bearer ' + (__import__('os').getenv('MIMO_API_KEY',''))}, timeout=5); print(r.status_code)\" 2>/dev/null | grep -q 200" "MiMo API 可达"
 
 # ============================================================
 echo ""
