@@ -10,12 +10,13 @@ API_KEYS = [
     "tp-czlg508mettka4cw8ovzmnt4tnk7f5avzebx3syqki8i5cpy",
     "tp-c5uwgsuqzwfb6y997zqoutaxf1tl75b4ucbtwypya0vhkx99",
     "tp-cq3xrll333q4dpzejr9hw2nittorca8fdfox3ev60a8boxin",
+    "tp-c14havddv668cnmffufilxydum6plsusqzoxigsc9dmobfl8",
 ]
 API_URL = "https://token-plan-cn.xiaomimimo.com/v1/chat/completions"
 MODEL = "mimo-v2.5-pro"
 OUTPUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "train_scenarios_final.jsonl")
 TARGET_SAMPLES = 150000
-MAX_WORKERS = 6
+MAX_WORKERS = 8
 _key_lock = threading.Lock()
 _key_index = 0
 
