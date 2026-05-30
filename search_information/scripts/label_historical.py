@@ -55,6 +55,11 @@ def call_mimo(prompt, max_tokens=2000):
     for attempt in range(MAX_RETRIES):
         try:
             resp = requests.post(MIMO_API_URL, headers=headers, json=payload, timeout=60)
+            if resp.status_code == 429:
+                wait_time = 30 * (attempt + 1)
+                print(f"  [限流] 等待 {wait_time} 秒后重试...")
+                time.sleep(wait_time)
+                continue
             resp.raise_for_status()
             data = resp.json()
             msg = data["choices"][0]["message"]
