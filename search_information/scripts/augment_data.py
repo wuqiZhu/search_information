@@ -58,12 +58,18 @@ def main():
     with open(INPUT) as f:
         data = [json.loads(line) for line in f]
 
-    log(f"原始数据: {len(data)} 条")
-    log(f"将生成 {len(data) * 5} 个变体")
+    max_samples = 2000
+    variants_per_sample = 2
+    if len(data) > max_samples:
+        log(f"原始数据: {len(data)} 条，限制为前 {max_samples} 条")
+        data = data[:max_samples]
+    else:
+        log(f"原始数据: {len(data)} 条")
+    log(f"将生成 {len(data) * variants_per_sample} 个变体")
 
     augmented = []
-    total = len(data) * 5
-    batch_size = 50
+    total = len(data) * variants_per_sample
+    batch_size = 20
 
     for batch_start in range(0, total, batch_size):
         batch_end = min(batch_start + batch_size, total)
@@ -71,7 +77,7 @@ def main():
 
         with ThreadPoolExecutor(max_workers=10) as ex:
             for i in range(batch_start, batch_end):
-                sample_idx = i // 5
+                sample_idx = i // variants_per_sample
                 if sample_idx < len(data):
                     batch_futures.append(ex.submit(augment, data[sample_idx]))
 
