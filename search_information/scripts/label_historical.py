@@ -20,7 +20,7 @@ MIMO_API_URL = "https://token-plan-cn.xiaomimimo.com/v1/chat/completions"
 MODEL_NAME = "mimo-v2.5-pro"
 MAX_RETRIES = 3
 BATCH_SIZE = 50
-MAX_WORKERS = 5
+MAX_WORKERS = 10
 STORAGE_DIR = "/root/projects/data/search_information"
 
 LABEL_COLS = ['sentiment', 'sentiment_score', 'relevance_score', 'category', 'summary']
