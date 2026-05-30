@@ -2,14 +2,18 @@
 import json
 import requests
 import os
+import sys
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 INPUT = "/root/projects/search_information/search_information/scripts/train_invest.jsonl"
 OUTPUT = "/root/projects/search_information/search_information/scripts/train_invest_augmented.jsonl"
 API_KEY = os.getenv("MIMO_API_KEY")
 API_URL = "https://token-plan-cn.xiaomimimo.com/v1/chat/completions"
 MODEL = "mimo-v2.5-pro"
+
+def log(msg):
+    print(msg, flush=True)
 
 def augment(sample):
     original = sample["conversations"][0]["value"]
@@ -45,38 +49,46 @@ def augment(sample):
 
 def main():
     if not API_KEY:
-        print("错误: MIMO_API_KEY 环境变量未设置")
+        log("错误: MIMO_API_KEY 环境变量未设置")
         return
 
     with open(INPUT) as f:
         data = [json.loads(line) for line in f]
 
-    print(f"原始数据: {len(data)} 条")
+    log(f"原始数据: {len(data)} 条")
+    log(f"将生成 {len(data) * 5} 个变体")
 
     augmented = []
     total = len(data) * 5
-    with ThreadPoolExecutor(max_workers=10) as ex:
-        futures = []
-        for sample in data:
-            for _ in range(5):
-                futures.append(ex.submit(augment, sample))
-        for i, f in enumerate(futures):
-            try:
-                result = f.result()
-                if result:
-                    augmented.append(result)
-                if (i+1) % 100 == 0:
-                    print(f"增强进度: {i+1}/{total} (成功 {len(augmented)})")
-            except:
-                pass
+    batch_size = 50
+
+    for batch_start in range(0, total, batch_size):
+        batch_end = min(batch_start + batch_size, total)
+        batch_futures = []
+
+        with ThreadPoolExecutor(max_workers=10) as ex:
+            for i in range(batch_start, batch_end):
+                sample_idx = i // 5
+                if sample_idx < len(data):
+                    batch_futures.append(ex.submit(augment, data[sample_idx]))
+
+            for f in as_completed(batch_futures):
+                try:
+                    result = f.result()
+                    if result:
+                        augmented.append(result)
+                except:
+                    pass
+
+        log(f"进度: {batch_end}/{total} (成功 {len(augmented)})")
 
     all_data = data + augmented
     with open(OUTPUT, 'w', encoding='utf-8') as f:
         for s in all_data:
             f.write(json.dumps(s, ensure_ascii=False) + '\n')
 
-    print(f"\n✅ 增强完成：{len(data)} → {len(all_data)} 条（含 {len(augmented)} 个变体）")
-    print(f"   文件：{OUTPUT}")
+    log(f"\n✅ 增强完成：{len(data)} → {len(all_data)} 条（含 {len(augmented)} 个变体）")
+    log(f"   文件：{OUTPUT}")
 
 if __name__ == "__main__":
     main()
