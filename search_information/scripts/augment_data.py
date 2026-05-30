@@ -39,9 +39,12 @@ def augment(sample):
                 time.sleep(30 * (attempt + 1))
                 continue
             resp.raise_for_status()
-            new_q = resp.json()["choices"][0]["message"]["content"]
+            msg = resp.json()["choices"][0]["message"]
+            content = msg.get("content", "") or ""
+            reasoning = msg.get("reasoning_content", "") or ""
+            new_q = content.strip() if content.strip() else reasoning.strip()
             if new_q:
-                return {"conversations": [{"from": "human", "value": new_q.strip()}, {"from": "gpt", "value": answer}]}
+                return {"conversations": [{"from": "human", "value": new_q}, {"from": "gpt", "value": answer}]}
         except Exception as e:
             if attempt < 2:
                 time.sleep(2 ** attempt)
