@@ -3,15 +3,28 @@
 场景生成器 v2.2
 修复：真实API密钥、种子提取兼容5种格式、净增打印、分类标签补全、种子采样扩大
 """
-import json, os, requests, time, random
+import json, os, requests, time, random, threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-API_KEY = os.getenv("MIMO_API_KEY", "tp-cq3xrll333q4dpzejr9hw2nittorca8fdfox3ev60a8boxin")
+API_KEYS = [
+    "tp-czlg508mettka4cw8ovzmnt4tnk7f5avzebx3syqki8i5cpy",
+    "tp-c5uwgsuqzwfb6y997zqoutaxf1tl75b4ucbtwypya0vhkx99",
+    "tp-cq3xrll333q4dpzejr9hw2nittorca8fdfox3ev60a8boxin",
+]
 API_URL = "https://token-plan-cn.xiaomimimo.com/v1/chat/completions"
 MODEL = "mimo-v2.5-pro"
 OUTPUT = "/root/projects/search_information/scripts/train_scenarios_final.jsonl"
 TARGET_SAMPLES = 150000
-MAX_WORKERS = 5
+MAX_WORKERS = 6
+_key_lock = threading.Lock()
+_key_index = 0
+
+def get_next_key():
+    global _key_index
+    with _key_lock:
+        key = API_KEYS[_key_index % len(API_KEYS)]
+        _key_index += 1
+        return key
 
 SEEDS_INITIAL = [
     "突发！某光伏龙头Q3净利润暴增340%",
@@ -47,7 +60,8 @@ ALL_CATEGORIES = "03-政策福利|04-行业动态|05-长期杠杆|06-嵌入式Li
 
 
 def call_mimo(prompt, max_tokens=500, temperature=0.8):
-    headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
+    api_key = get_next_key()
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     payload = {
         "model": MODEL,
         "messages": [{"role": "user", "content": prompt}],
