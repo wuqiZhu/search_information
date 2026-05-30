@@ -13,7 +13,7 @@ API_KEYS = [
 ]
 API_URL = "https://token-plan-cn.xiaomimimo.com/v1/chat/completions"
 MODEL = "mimo-v2.5-pro"
-OUTPUT = "/root/projects/search_information/scripts/train_scenarios_final.jsonl"
+OUTPUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "train_scenarios_final.jsonl")
 TARGET_SAMPLES = 150000
 MAX_WORKERS = 6
 _key_lock = threading.Lock()
