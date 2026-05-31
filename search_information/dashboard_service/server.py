@@ -447,6 +447,24 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         </div>
 
         <div class="section">
+            <h2>市场情绪指数（Fear & Greed Index）</h2>
+            <div style="display: flex; gap: 20px; align-items: center; margin-bottom: 15px;">
+                <div style="text-align: center; min-width: 120px;">
+                    <div id="sentiment-gauge" style="font-size: 48px; font-weight: bold; color: #ffcc00;">--</div>
+                    <div id="sentiment-level" style="font-size: 16px; font-weight: 500; margin-top: 5px;">加载中</div>
+                    <div id="sentiment-trend" style="font-size: 12px; color: #999; margin-top: 3px;"></div>
+                </div>
+                <div style="flex: 1;">
+                    <canvas id="sentimentRadar" height="200"></canvas>
+                </div>
+            </div>
+            <div id="sentiment-details" style="font-size: 13px; color: #666;"></div>
+            <div style="margin-top: 10px;">
+                <canvas id="sentimentTrend" height="150"></canvas>
+            </div>
+        </div>
+
+        <div class="section">
             <h2>数据归档</h2>
             <div id="archive-info"><div class="empty">加载中...</div></div>
         </div>
@@ -576,6 +594,111 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             }
         }
 
+        async function semanticSearch() {
+            const query = document.getElementById('semanticInput').value.trim();
+            if (!query) {
+                document.getElementById('semantic-results').innerHTML = '<div class="empty">请输入自然语言查询</div>';
+                return;
+            }
+
+            const el = document.getElementById('semantic-results');
+            el.innerHTML = '<div class="empty">正在语义搜索...</div>';
+
+            try {
+                const resp = await fetch('/api/semantic-search', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({query: query, top_k: 10})
+                });
+                const data = await resp.json();
+
+                if (data.error) {
+                    el.innerHTML = `<div class="empty" style="color:#c00;">${data.error}</div>`;
+                    return;
+                }
+
+                const results = data.results || [];
+                if (results.length === 0) {
+                    el.innerHTML = '<div class="empty">未找到相关内容</div>';
+                    return;
+                }
+
+                el.innerHTML = `<div class="item"><div class="item-title">找到 ${results.length} 条相关结果</div></div>` +
+                    results.map(item =>
+                        `<div class="item">
+                            <div class="item-title">${item.title || '无标题'}</div>
+                            <div style="font-size:13px; color:#555; margin:4px 0;">${(item.summary || item.content || '').substring(0, 150)}...</div>
+                            <div class="item-meta">
+                                <span class="badge badge-score">相关度 ${((item.score || 0) * 100).toFixed(0)}%</span>
+                                ${item.category ? `<span class="badge badge-source">${item.category}</span>` : ''}
+                                ${item.date || ''}
+                            </div>
+                        </div>`
+                    ).join('');
+            } catch (e) {
+                console.error('语义搜索失败:', e);
+                el.innerHTML = `<div class="empty" style="color:#c00;">语义搜索服务不可用</div>`;
+            }
+        }
+
+        async function ragAsk() {
+            const question = document.getElementById('askInput').value.trim();
+            if (!question) {
+                document.getElementById('ask-results').innerHTML = '<div class="empty">请输入问题</div>';
+                return;
+            }
+
+            const el = document.getElementById('ask-results');
+            el.innerHTML = '<div class="empty">正在思考中...</div>';
+
+            try {
+                const resp = await fetch('/api/rag-ask', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({question: question, top_k: 5})
+                });
+                const data = await resp.json();
+
+                if (data.error) {
+                    el.innerHTML = `<div class="empty" style="color:#c00;">${data.error}</div>`;
+                    return;
+                }
+
+                let html = `<div class="item">
+                    <div class="item-title" style="font-size:15px; line-height:1.8;">${(data.answer || '').replace(/\n/g, '<br>')}</div>
+                    <div class="item-meta" style="margin-top:10px;">
+                        <span class="badge badge-score">置信度 ${((data.confidence || 0) * 100).toFixed(0)}%</span>
+                    </div>
+                </div>`;
+
+                if (data.sources && data.sources.length > 0) {
+                    html += `<div style="margin-top:10px; padding-top:10px; border-top:1px solid #eee;">
+                        <div style="font-size:12px; color:#999; margin-bottom:8px;">参考来源：</div>
+                        ${data.sources.map((s, i) =>
+                            `<div class="item" style="padding:5px 0;">
+                                <span style="color:#1a1a2e; font-weight:500;">[${i+1}]</span>
+                                ${s.title || ''}
+                                ${s.category ? `<span class="badge badge-source" style="margin-left:5px;">${s.category}</span>` : ''}
+                                ${s.date ? `<span style="color:#999; font-size:11px; margin-left:5px;">${s.date}</span>` : ''}
+                            </div>`
+                        ).join('')}
+                    </div>`;
+                }
+
+                el.innerHTML = html;
+            } catch (e) {
+                console.error('RAG问答失败:', e);
+                el.innerHTML = `<div class="empty" style="color:#c00;">问答服务不可用</div>`;
+            }
+        }
+
+        document.getElementById('semanticInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') semanticSearch();
+        });
+        document.getElementById('askInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') ragAsk();
+        });
+
         // 回车搜索
         document.getElementById('searchInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
@@ -602,8 +725,100 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             }
         }
 
+        async function loadSentiment() {
+            try {
+                const investUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+                    ? 'http://localhost:5000' : 'http://invest-backend:5000';
+
+                const resp = await fetch(`${investUrl}/api/market-sentiment`);
+                if (!resp.ok) return;
+                const data = await resp.json();
+
+                const gauge = document.getElementById('sentiment-gauge');
+                const level = document.getElementById('sentiment-level');
+                const trend = document.getElementById('sentiment-trend');
+                const details = document.getElementById('sentiment-details');
+
+                gauge.textContent = data.index.toFixed(0);
+                level.textContent = data.level;
+                trend.textContent = `趋势: ${data.trend || '平稳'}`;
+
+                const colorMap = {
+                    '极度恐惧': '#00cc44', '恐惧': '#88cc00', '中性': '#ffcc00',
+                    '贪婪': '#ff8800', '极度贪婪': '#ff4444'
+                };
+                gauge.style.color = colorMap[data.level] || '#ffcc00';
+
+                if (data.components) {
+                    const comp = data.components;
+                    const labels = ['新闻情绪', '市场动量', '波动率', '技术信号', '社交情绪'];
+                    const keys = ['news_sentiment', 'market_momentum', 'volatility', 'technical_signals', 'social_sentiment'];
+                    const scores = keys.map(k => (comp[k]?.score || 0) * 100);
+
+                    if (window.sentimentRadarChart) window.sentimentRadarChart.destroy();
+                    const ctx = document.getElementById('sentimentRadar').getContext('2d');
+                    window.sentimentRadarChart = new Chart(ctx, {
+                        type: 'radar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: '情绪维度',
+                                data: scores,
+                                backgroundColor: 'rgba(26, 26, 46, 0.15)',
+                                borderColor: '#1a1a2e',
+                                pointBackgroundColor: '#1a1a2e',
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: { r: { min: 0, max: 100, ticks: { stepSize: 20 } } },
+                            plugins: { legend: { display: false } }
+                        }
+                    });
+
+                    details.innerHTML = keys.map((k, i) => {
+                        const nameMap = {news_sentiment:'新闻情绪',market_momentum:'市场动量',volatility:'波动率',technical_signals:'技术信号',social_sentiment:'社交情绪'};
+                        const d = comp[k] || {};
+                        return `<span style="margin-right:15px;">${nameMap[k]}: <b>${scores[i].toFixed(0)}</b> (${(d.weight*100).toFixed(0)}%)</span>`;
+                    }).join('');
+                }
+
+                const histResp = await fetch(`${investUrl}/api/market-sentiment?action=history&days=30`);
+                if (histResp.ok) {
+                    const histData = await histResp.json();
+                    const history = histData.history || [];
+                    if (history.length > 1) {
+                        if (window.sentimentTrendChart) window.sentimentTrendChart.destroy();
+                        const ctx2 = document.getElementById('sentimentTrend').getContext('2d');
+                        window.sentimentTrendChart = new Chart(ctx2, {
+                            type: 'line',
+                            data: {
+                                labels: history.map(h => h.date ? h.date.substring(5) : ''),
+                                datasets: [{
+                                    label: '情绪指数',
+                                    data: history.map(h => h.index),
+                                    borderColor: '#1a1a2e',
+                                    backgroundColor: 'rgba(26, 26, 46, 0.1)',
+                                    tension: 0.4, fill: true,
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                scales: { y: { min: 0, max: 100 } },
+                                plugins: { legend: { display: false } }
+                            }
+                        });
+                    }
+                }
+            } catch (e) {
+                console.log('市场情绪指数加载跳过:', e.message);
+            }
+        }
+
         loadData();
+        loadSentiment();
         setInterval(loadData, 60000);
+        setInterval(loadSentiment, 300000);
     </script>
 </body>
 </html>"""
