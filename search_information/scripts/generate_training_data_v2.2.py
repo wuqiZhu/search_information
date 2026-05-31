@@ -132,8 +132,20 @@ def generate_titles(seed, count=30):
 
 种子：{seed}"""
     resp = call_mimo(prompt, max_tokens=2000, temperature=0.9)
-    titles = parse_json_array(resp)
-    return [t.get("title", "") for t in titles if t.get("title")]
+    parsed = parse_json_array(resp)
+    titles = []
+    for t in parsed:
+        if isinstance(t, dict) and t.get("title"):
+            titles.append(t["title"])
+        elif isinstance(t, str) and len(t) > 3:
+            titles.append(t)
+        elif isinstance(t, list):
+            for item in t:
+                if isinstance(item, dict) and item.get("title"):
+                    titles.append(item["title"])
+                elif isinstance(item, str) and len(item) > 3:
+                    titles.append(item)
+    return titles
 
 
 def annotate_batch(titles):
@@ -212,13 +224,21 @@ if __name__ == "__main__":
     print(f"场景生成器 v2.2 启动", flush=True)
     print(f"目标: {TARGET_SAMPLES} 条样本 | 并发: {MAX_WORKERS} 线程", flush=True)
 
-    if os.path.exists(OUTPUT):
-        os.remove(OUTPUT)
-
     all_samples = []
+    if os.path.exists(OUTPUT):
+        with open(OUTPUT, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    try:
+                        all_samples.append(json.loads(line))
+                    except:
+                        pass
+        print(f"断点续跑：已加载 {len(all_samples)} 条历史样本", flush=True)
+
     SEEDS = SEEDS_INITIAL[:]
     round_num = 0
-    prev_count = 0
+    prev_count = len(all_samples)
 
     while len(all_samples) < TARGET_SAMPLES:
         round_num += 1
