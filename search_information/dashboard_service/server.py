@@ -46,6 +46,19 @@ def find_latest_db(directory: str, pattern: str = "*.db") -> str:
         return ""
 
 
+def resolve_db_path(name: str, default_path: str, alternatives: list = None) -> str:
+    """智能解析数据库路径，支持多个备选路径"""
+    path = Path(default_path)
+    if path.exists():
+        return default_path
+    if alternatives:
+        for alt in alternatives:
+            alt_path = Path(alt)
+            if alt_path.exists():
+                return alt
+    return default_path
+
+
 def query_db(db_path: str, sql: str, params: tuple = ()) -> list:
     """安全查询数据库"""
     try:
@@ -90,17 +103,30 @@ def api_today():
         (today,)
     )
 
-    # 分析数据
+    # 分析数据（兼容 analyzer.db 和 analyzed.db，表名 processed_urls 和 analyzed）
+    analyse_db = DB_PATHS["analyse"]
     analyse_count = query_db(
-        DB_PATHS["analyse"],
-        "SELECT COUNT(*) as count FROM analyzed WHERE created_at >= ?",
+        analyse_db,
+        "SELECT COUNT(*) as count FROM processed_urls WHERE created_at >= ?",
         (today,)
     )
+    if not analyse_count:
+        analyse_count = query_db(
+            analyse_db,
+            "SELECT COUNT(*) as count FROM analyzed WHERE created_at >= ?",
+            (today,)
+        )
     analyse_high = query_db(
-        DB_PATHS["analyse"],
-        "SELECT title, score, category FROM analyzed WHERE created_at >= ? AND score >= 7 ORDER BY score DESC LIMIT 10",
+        analyse_db,
+        "SELECT title, score, category FROM processed_urls WHERE created_at >= ? AND score >= 7 ORDER BY score DESC LIMIT 10",
         (today,)
     )
+    if not analyse_high:
+        analyse_high = query_db(
+            analyse_db,
+            "SELECT title, score, category FROM analyzed WHERE created_at >= ? AND score >= 7 ORDER BY score DESC LIMIT 10",
+            (today,)
+        )
 
     # 求职数据
     job_count = query_db(
@@ -114,12 +140,42 @@ def api_today():
         (today,)
     )
 
-    # 投资数据
+    # 投资数据（从现有表生成预警，alerts表不存在时自动降级）
     invest_alerts = query_db(
         DB_PATHS["invest"],
         "SELECT fund_name, alert_type, message FROM alerts WHERE date >= ? ORDER BY date DESC LIMIT 10",
         (today,)
     )
+    if not invest_alerts:
+        invest_alerts = []
+        drawdown_alerts = query_db(
+            DB_PATHS["invest"],
+            "SELECT fi.fund_name, fa.max_drawdown, fa.annualized_return FROM fund_analysis fa JOIN fund_info fi ON fa.fund_code = fi.fund_code WHERE fa.max_drawdown < -10 ORDER BY fa.analysis_date DESC LIMIT 5"
+        )
+        for row in drawdown_alerts:
+            invest_alerts.append({
+                "fund_name": row.get("fund_name", ""),
+                "alert_type": "回撤预警",
+                "message": f"最大回撤 {row.get('max_drawdown', 0):.1f}%"
+            })
+        profit_alerts = query_db(
+            DB_PATHS["invest"],
+            "SELECT fi.fund_name, ir.profit, ir.profit_rate FROM invest_records ir JOIN fund_info fi ON ir.fund_code = fi.fund_code WHERE ir.profit_rate > 15 OR ir.profit_rate < -10 ORDER BY ir.update_time DESC LIMIT 5"
+        )
+        for row in profit_alerts:
+            rate = row.get("profit_rate", 0)
+            if rate > 15:
+                invest_alerts.append({
+                    "fund_name": row.get("fund_name", ""),
+                    "alert_type": "止盈提醒",
+                    "message": f"收益率 {rate:.1f}%，考虑止盈"
+                })
+            elif rate < -10:
+                invest_alerts.append({
+                    "fund_name": row.get("fund_name", ""),
+                    "alert_type": "止损提醒",
+                    "message": f"亏损 {rate:.1f}%，注意风险"
+                })
 
     return jsonify({
         "date": today,
@@ -156,11 +212,15 @@ def api_stats():
             elif name == "rss":
                 count = query_db(path, "SELECT COUNT(*) as count FROM rss_items")
             elif name == "analyse":
-                count = query_db(path, "SELECT COUNT(*) as count FROM analyzed")
+                count = query_db(path, "SELECT COUNT(*) as count FROM processed_urls")
+                if not count:
+                    count = query_db(path, "SELECT COUNT(*) as count FROM analyzed")
             elif name == "jobs":
                 count = query_db(path, "SELECT COUNT(*) as count FROM jobs")
             elif name == "invest":
-                count = query_db(path, "SELECT COUNT(*) as count FROM fund_data")
+                count = query_db(path, "SELECT COUNT(*) as count FROM fund_info")
+                if not count:
+                    count = query_db(path, "SELECT COUNT(*) as count FROM fund_data")
             else:
                 count = [{"count": 0}]
             stats[name] = count[0]["count"] if count else 0
@@ -1113,8 +1173,13 @@ def create_app():
     else:
         DB_PATHS["rss"] = os.environ.get("RSS_DB", "")
 
-    # 分析数据库
-    DB_PATHS["analyse"] = os.environ.get("ANALYSE_DB", str(data_base / "knowledge_base" / "analyzed.db"))
+    # 分析数据库（兼容 analyzer.db 和 analyzed.db）
+    analyse_default = os.environ.get("ANALYSE_DB", str(data_base / "knowledge_base" / "analyzed.db"))
+    DB_PATHS["analyse"] = resolve_db_path("analyse", analyse_default, [
+        str(data_base / "knowledge_base" / "analyzer.db"),
+        str(data_base / "knowledge_base" / "analyzed.db"),
+        str(data_base / "shared" / "data" / "analyzer.db"),
+    ])
 
     # 求职数据库
     DB_PATHS["jobs"] = os.environ.get("JOBS_DB", str(data_base / "find_job" / "jobs.db"))
