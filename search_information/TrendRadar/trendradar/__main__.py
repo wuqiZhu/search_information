@@ -869,8 +869,14 @@ class NewsAnalyzer:
         current_results: Optional[Dict] = None,
     ) -> bool:
         """统一的通知发送逻辑，包含所有判断条件，支持热榜+RSS合并推送+AI分析+独立展示区"""
-        has_notification = self._has_notification_configured()
         cfg = self.ctx.config
+
+        # 定时推送模式下，跳过实时推送
+        scheduled_config = cfg.get("notification", {}).get("scheduled_push", {})
+        if scheduled_config.get("enabled", False):
+            return False
+
+        has_notification = self._has_notification_configured()
 
         # 检查是否有有效内容（热榜或RSS）
         has_news_content = self._has_valid_content(stats, new_titles)
@@ -1651,73 +1657,149 @@ class NewsAnalyzer:
                 import traceback
                 traceback.print_exc()
 
-    def _send_daily_summary_if_needed(self) -> None:
-        """在晚间发送每日思维导图总结"""
+    def _check_scheduled_push(self) -> None:
+        """定时推送检查 - 每天固定时间推送"""
         try:
+            scheduled_config = self.ctx.config.get("notification", {}).get("scheduled_push", {})
+            if not scheduled_config.get("enabled", False):
+                return
+
             now = self.ctx.get_time()
-            hour = now.hour
-            if hour < 20 or hour > 23:
+            current_time = now.strftime("%H:%M")
+            today_str = now.strftime("%Y-%m-%d")
+            scheduled_times = scheduled_config.get("times", ["09:00", "13:00", "18:00", "22:00"])
+            mindmap_time = scheduled_config.get("mindmap_time", "22:00")
+
+            is_scheduled_time = False
+            for t in scheduled_times:
+                if current_time >= t and current_time < self._add_minutes(t, 15):
+                    is_scheduled_time = True
+                    break
+
+            if not is_scheduled_time:
                 return
 
             data_dir = Path(self.ctx.config.get("STORAGE", {}).get("LOCAL", {}).get("DATA_DIR", "output"))
-            summary_flag = data_dir / ".daily_summary_sent"
-            today_str = now.strftime("%Y-%m-%d")
-            if summary_flag.exists():
-                flag_content = summary_flag.read_text(encoding="utf-8").strip()
-                if flag_content == today_str:
-                    return
+            flag_file = data_dir / ".scheduled_push_sent"
+            sent_slots = set()
+            if flag_file.exists():
+                content = flag_file.read_text(encoding="utf-8").strip()
+                for line in content.split("\n"):
+                    if line.startswith(today_str):
+                        parts = line.split(":")
+                        if len(parts) >= 2:
+                            sent_slots.add(parts[1])
+
+            slot_name = current_time[:2] + ":00"
+            if slot_name in sent_slots:
+                return
 
             dispatcher = self.ctx.create_notification_dispatcher()
             if not self.ctx.config.get("DINGTALK_WEBHOOK_URL"):
                 return
 
-            summary_data = {}
-
-            news_db = data_dir / "news" / f"{today_str}.db"
-            if news_db.exists():
-                import sqlite3
-                conn = sqlite3.connect(str(news_db))
-                conn.row_factory = sqlite3.Row
-                rows = conn.execute("SELECT title, platform_id as source, url FROM news_items ORDER BY created_at DESC LIMIT 100").fetchall()
-                conn.close()
-                today_news = [dict(r) for r in rows]
-
-                tech = [n for n in today_news if any(k in n.get("title", "") for k in ["AI", "芯片", "半导体", "机器人", "量子", "算力", "自动驾驶", "GPU", "AIGC", "AGI", "CPU", "NPU"])]
-                invest = [n for n in today_news if any(k in n.get("title", "") for k in ["基金", "股票", "投资", "涨", "跌", "收益", "持仓", "ETF", "理财", "市场"])]
-                job = [n for n in today_news if any(k in n.get("title", "") for k in ["招聘", "实习", "校招", "社招", "岗位", "薪资", "求职", "offer"])]
-                other = [n for n in today_news if n not in tech and n not in invest and n not in job]
-
-                if tech:
-                    summary_data["科技热点"] = tech[:10]
-                if invest:
-                    summary_data["投资信号"] = invest[:10]
-                if job:
-                    summary_data["求职机会"] = job[:10]
-                if other:
-                    summary_data["综合资讯"] = other[:10]
-
+            summary_data = self._collect_today_summary(data_dir, today_str)
             if not summary_data:
-                rss_db = data_dir / "rss" / f"{today_str}.db"
-                if rss_db.exists():
-                    import sqlite3
-                    conn = sqlite3.connect(str(rss_db))
-                    conn.row_factory = sqlite3.Row
-                    rows = conn.execute("SELECT title, feed_name, url FROM rss_items ORDER BY created_at DESC LIMIT 50").fetchall()
-                    conn.close()
-                    if rows:
-                        summary_data["RSS资讯"] = [dict(r) for r in rows[:20]]
+                print(f"[定时推送] {current_time} 无数据，跳过")
+                return
 
-            if summary_data:
-                print("[每日总结] 正在发送晚间思维导图总结...")
+            is_mindmap = (current_time >= mindmap_time and current_time < self._add_minutes(mindmap_time, 15))
+
+            if is_mindmap:
+                print(f"[定时推送] {current_time} 发送思维导图总结...")
                 dispatcher.dispatch_daily_summary(summary_data, today_str)
-                summary_flag.parent.mkdir(parents=True, exist_ok=True)
-                summary_flag.write_text(today_str, encoding="utf-8")
-                print("[每日总结] 发送完成")
             else:
-                print("[每日总结] 今日暂无数据，跳过总结")
+                print(f"[定时推送] {current_time} 发送文字总结...")
+                self._send_text_summary(dispatcher, summary_data, today_str, current_time)
+
+            flag_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(flag_file, "a", encoding="utf-8") as f:
+                f.write(f"{today_str}:{slot_name}\n")
+
+            print(f"[定时推送] 发送完成")
 
         except Exception as e:
-            print(f"[每日总结] 发送失败: {e}")
+            print(f"[定时推送] 失败: {e}")
+
+    def _collect_today_summary(self, data_dir: Path, today_str: str) -> dict:
+        """收集今日数据"""
+        summary_data = {}
+        news_db = data_dir / "news" / f"{today_str}.db"
+        if news_db.exists():
+            import sqlite3
+            conn = sqlite3.connect(str(news_db))
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute("SELECT title, platform_id as source, url FROM news_items ORDER BY created_at DESC LIMIT 100").fetchall()
+            conn.close()
+            today_news = [dict(r) for r in rows]
+
+            tech = [n for n in today_news if any(k in n.get("title", "") for k in ["AI", "芯片", "半导体", "机器人", "量子", "算力", "自动驾驶", "GPU", "AIGC", "AGI", "CPU", "NPU"])]
+            invest = [n for n in today_news if any(k in n.get("title", "") for k in ["基金", "股票", "投资", "涨", "跌", "收益", "持仓", "ETF", "理财", "市场"])]
+            job = [n for n in today_news if any(k in n.get("title", "") for k in ["招聘", "实习", "校招", "社招", "岗位", "薪资", "求职", "offer"])]
+            other = [n for n in today_news if n not in tech and n not in invest and n not in job]
+
+            if tech:
+                summary_data["科技热点"] = tech[:10]
+            if invest:
+                summary_data["投资信号"] = invest[:10]
+            if job:
+                summary_data["求职机会"] = job[:10]
+            if other:
+                summary_data["综合资讯"] = other[:10]
+
+        if not summary_data:
+            rss_db = data_dir / "rss" / f"{today_str}.db"
+            if rss_db.exists():
+                import sqlite3
+                conn = sqlite3.connect(str(rss_db))
+                conn.row_factory = sqlite3.Row
+                rows = conn.execute("SELECT title, feed_name, url FROM rss_items ORDER BY created_at DESC LIMIT 50").fetchall()
+                conn.close()
+                if rows:
+                    summary_data["RSS资讯"] = [dict(r) for r in rows[:20]]
+
+        return summary_data
+
+    def _send_text_summary(self, dispatcher, summary_data: dict, date_str: str, time_str: str) -> None:
+        """发送文字版总结"""
+        period = "晨报" if time_str < "12:00" else ("午报" if time_str < "17:00" else "晚报")
+        lines = [f"# 📰 今日{period} ({date_str})", ""]
+
+        total = 0
+        for category, items in summary_data.items():
+            if not items:
+                continue
+            lines.append(f"**{category}** ({len(items)}条)")
+            for item in items[:5]:
+                title = item.get("title", "")[:60]
+                source = item.get("source", item.get("feed_name", ""))
+                source_tag = f" [{source}]" if source else ""
+                lines.append(f"• {title}{source_tag}")
+                total += 1
+            lines.append("")
+
+        lines.append(f"📊 共 {total} 条 | TrendRadar {period}")
+        markdown = "\n".join(lines)
+
+        if self.ctx.config.get("DINGTALK_WEBHOOK_URL"):
+            try:
+                import requests as req
+                webhook = self.ctx.config["DINGTALK_WEBHOOK_URL"]
+                if isinstance(webhook, str) and webhook.startswith("http"):
+                    payload = {
+                        "msgtype": "markdown",
+                        "markdown": {"title": f"📰 今日{period}", "text": markdown}
+                    }
+                    req.post(webhook, json=payload, timeout=30)
+            except Exception as e:
+                print(f"[定时推送] 发送失败: {e}")
+
+    @staticmethod
+    def _add_minutes(time_str: str, minutes: int) -> str:
+        """时间字符串加分钟"""
+        h, m = map(int, time_str.split(":"))
+        total = h * 60 + m + minutes
+        return f"{(total // 60) % 24:02d}:{total % 60:02d}"
 
     def run(self) -> None:
         """执行分析流程"""
@@ -1740,7 +1822,7 @@ class NewsAnalyzer:
             )
 
             # 晚间发送每日思维导图总结
-            self._send_daily_summary_if_needed()
+            self._check_scheduled_push()
 
         except Exception as e:
             print(f"分析流程执行出错: {e}")
