@@ -444,8 +444,9 @@ class NotificationDispatcher:
             ),
         )
 
-        if self.config.get("DINGTALK_ENHANCED_ENABLED") and rss_new_items:
-            self._send_dingtalk_enhanced(rss_new_items, report_type)
+        items_for_enhanced = rss_new_items if rss_new_items else rss_items
+        if self.config.get("DINGTALK_ENHANCED_ENABLED") and items_for_enhanced:
+            self._send_dingtalk_enhanced(items_for_enhanced, report_type)
 
         return result
 
