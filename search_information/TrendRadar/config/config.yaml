@@ -269,7 +269,7 @@ notification:
       # 启用后会在常规报告之后额外发送带图片的新闻卡片（feedCard）
       # 效果：每条 RSS 新闻显示为带图片的卡片，点击可跳转原文
       enhanced:
-        enabled: true                     # 是否启用增强模式
+        enabled: false                    # 是否启用增强模式（用户反馈图片无用，已禁用）
         max_items: 5                      # 最多抓取图片的新闻条数（每条需要请求文章页面，建议不超过10）
 
     wework:

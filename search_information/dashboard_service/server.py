@@ -92,9 +92,15 @@ def api_today():
     )
     trend_signals = query_db(
         DB_PATHS["trendradar"],
-        "SELECT title, platform_id as source, url, created_at as date FROM news_items WHERE created_at >= ? ORDER BY created_at DESC LIMIT 20",
+        "SELECT title, platform_id as source, url, created_at as date FROM news_items WHERE created_at >= ? AND platform_id NOT IN ('weibo', 'douyin') ORDER BY created_at DESC LIMIT 10",
         (today,)
     )
+    if not trend_signals:
+        trend_signals = query_db(
+            DB_PATHS["trendradar"],
+            "SELECT title, platform_id as source, url, created_at as date FROM news_items WHERE created_at >= ? ORDER BY created_at DESC LIMIT 10",
+            (today,)
+        )
 
     # RSS 数据
     rss_count = query_db(
@@ -474,6 +480,91 @@ def api_backtest_report():
     return jsonify({"reports": reports, "latest_content": content})
 
 
+@app.route('/api/funds', methods=['GET'])
+def api_get_funds():
+    """获取基金列表"""
+    invest_url = os.environ.get('INVEST_API_URL', 'http://invest-backend:5000')
+    try:
+        import requests
+        resp = requests.get(f"{invest_url}/api/portfolio", timeout=10)
+        data = resp.json()
+        holdings = data.get("holdings", data.get("funds", []))
+        return jsonify({"funds": holdings})
+    except Exception:
+        config_path = Path(os.environ.get("INVEST_CONFIG", "/app/invest/config/user_config.yaml"))
+        if not config_path.exists():
+            config_path = Path(os.environ.get("INVEST_CONFIG", "/app/invest/config/default_config.yaml"))
+        if config_path.exists():
+            import yaml
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = yaml.safe_load(f)
+                return jsonify({"funds": config.get("funds", [])})
+            except Exception:
+                pass
+        return jsonify({"funds": []})
+
+
+@app.route('/api/funds', methods=['POST'])
+def api_add_fund():
+    """添加基金"""
+    data = request.get_json(silent=True)
+    if not data or not data.get('code'):
+        return jsonify({'error': '缺少基金代码'}), 400
+
+    config_path = Path(os.environ.get("INVEST_CONFIG", "/app/invest/config/user_config.yaml"))
+    if not config_path.exists():
+        config_path = Path(os.environ.get("INVEST_CONFIG", "/app/invest/config/default_config.yaml"))
+
+    import yaml
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f) or {}
+
+        funds = config.get("funds", [])
+        for f in funds:
+            if f.get("code") == data["code"]:
+                return jsonify({'error': '基金已存在'}), 400
+
+        funds.append({
+            "code": data["code"],
+            "name": data.get("name", ""),
+            "monthly_invest": data.get("monthly_invest", 200),
+            "enabled": True,
+        })
+        config["funds"] = funds
+
+        with open(config_path, 'w', encoding='utf-8') as f:
+            yaml.dump(config, f, allow_unicode=True, default_flow_style=False)
+
+        return jsonify({"success": True, "message": f"基金 {data['code']} 已添加"})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/funds/<code>', methods=['DELETE'])
+def api_delete_fund(code):
+    """删除基金"""
+    config_path = Path(os.environ.get("INVEST_CONFIG", "/app/invest/config/user_config.yaml"))
+    if not config_path.exists():
+        config_path = Path(os.environ.get("INVEST_CONFIG", "/app/invest/config/default_config.yaml"))
+
+    import yaml
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f) or {}
+
+        funds = config.get("funds", [])
+        config["funds"] = [f for f in funds if f.get("code") != code]
+
+        with open(config_path, 'w', encoding='utf-8') as f:
+            yaml.dump(config, f, allow_unicode=True, default_flow_style=False)
+
+        return jsonify({"success": True, "message": f"基金 {code} 已删除"})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 DASHBOARD_HTML = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -639,6 +730,17 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <div class="section">
             <h2>回测报告</h2>
             <div id="backtest-info"><div class="empty">加载中...</div></div>
+        </div>
+
+        <div class="section">
+            <h2>基金管理</h2>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                <input type="text" id="fundCode" placeholder="基金代码 如 110011" style="width: 120px; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                <input type="text" id="fundName" placeholder="基金名称（可选）" style="width: 180px; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                <input type="number" id="fundAmount" placeholder="每月定投" value="200" style="width: 100px; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                <button class="refresh-btn" onclick="addFund()">添加基金</button>
+            </div>
+            <div id="fund-list"><div class="empty">加载中...</div></div>
         </div>
     </div>
 
@@ -992,6 +1094,87 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             }
         }
 
+        async function loadFunds() {
+            try {
+                const resp = await fetch('/api/funds');
+                const data = await resp.json();
+                const el = document.getElementById('fund-list');
+                const funds = data.funds || [];
+
+                if (funds.length === 0) {
+                    el.innerHTML = '<div class="empty">暂无基金，请添加</div>';
+                    return;
+                }
+
+                el.innerHTML = funds.map(f => {
+                    const code = f.fund_code || f.code || '';
+                    const name = f.fund_name || f.name || '--';
+                    const amount = f.monthly_invest || '--';
+                    const nav = f.nav || f.current_nav || f.price || '';
+                    const pnl = f.pnl || f.profit || 0;
+                    const pnlPct = f.pnl_pct || f.profit_rate || 0;
+                    const pnlClass = pnl >= 0 ? 'positive' : 'negative';
+                    const sign = pnl >= 0 ? '+' : '';
+                    return `<div class="portfolio-card ${pnl >= 0 ? 'profit' : 'loss'}" style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div class="fund-name">${name}</div>
+                            <div class="fund-detail">代码: ${code} | 定投: ¥${amount}/月${nav ? ' | 净值: ¥' + Number(nav).toFixed(4) : ''}</div>
+                            ${pnl ? `<div class="pnl ${pnlClass}" style="font-size:16px;">${sign}¥${pnl.toFixed(2)} (${sign}${pnlPct.toFixed(2)}%)</div>` : ''}
+                        </div>
+                        <button onclick="deleteFund('${code}')" style="background:#ff4444; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-size:12px;">删除</button>
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                console.log('基金列表加载失败:', e.message);
+            }
+        }
+
+        async function addFund() {
+            const code = document.getElementById('fundCode').value.trim();
+            const name = document.getElementById('fundName').value.trim();
+            const amount = parseInt(document.getElementById('fundAmount').value) || 200;
+
+            if (!code) {
+                alert('请输入基金代码');
+                return;
+            }
+
+            try {
+                const resp = await fetch('/api/funds', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({code, name, monthly_invest: amount})
+                });
+                const data = await resp.json();
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    alert(data.message || '添加成功');
+                    document.getElementById('fundCode').value = '';
+                    document.getElementById('fundName').value = '';
+                    loadFunds();
+                }
+            } catch (e) {
+                alert('添加失败: ' + e.message);
+            }
+        }
+
+        async function deleteFund(code) {
+            if (!confirm(`确定删除基金 ${code}？`)) return;
+            try {
+                const resp = await fetch(`/api/funds/${code}`, {method: 'DELETE'});
+                const data = await resp.json();
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    alert(data.message || '删除成功');
+                    loadFunds();
+                }
+            } catch (e) {
+                alert('删除失败: ' + e.message);
+            }
+        }
+
         async function fetchWithTimeout(url, options = {}, timeout = 5000) {
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), timeout);
@@ -1102,6 +1285,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         loadSentiment();
         loadPortfolio();
         loadBacktest();
+        loadFunds();
         setInterval(loadData, 60000);
         setInterval(loadSentiment, 300000);
         setInterval(loadPortfolio, 300000);
