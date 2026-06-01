@@ -342,7 +342,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - 信息分析系统</title>
-    <script src="https://cdn.bootcdn.net/ajax/libs/Chart.js/4.4.7/chart.umd.min.js" async></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; color: #333; }
@@ -853,15 +852,27 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         setInterval(loadData, 60000);
         setInterval(loadSentiment, 300000);
 
-        function waitForChartjs(retries) {
-            if (typeof Chart !== 'undefined') {
+        var chartUrls = [
+            'https://cdn.bootcdn.net/ajax/libs/Chart.js/4.4.7/chart.umd.min.js',
+            'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.7/chart.umd.min.js'
+        ];
+        function loadChartScript(idx) {
+            if (idx >= chartUrls.length) return;
+            var s = document.createElement('script');
+            s.src = chartUrls[idx];
+            s.onload = function() {
+                console.log('Chart.js 加载成功: ' + chartUrls[idx]);
                 loadTrend();
                 loadSentiment();
-            } else if (retries > 0) {
-                setTimeout(function(){ waitForChartjs(retries - 1); }, 2000);
-            }
+            };
+            s.onerror = function() {
+                console.log('Chart.js 加载失败: ' + chartUrls[idx] + '，尝试下一个');
+                loadChartScript(idx + 1);
+            };
+            document.body.appendChild(s);
         }
-        waitForChartjs(30);
+        loadChartScript(0);
     </script>
 </body>
 </html>"""
