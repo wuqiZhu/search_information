@@ -339,6 +339,81 @@ def api_rag_ask():
         return jsonify({'error': f'语义搜索服务不可用: {str(e)}'}), 503
 
 
+@app.route('/api/market-sentiment')
+def api_market_sentiment():
+    """代理转发市场情绪API（解决前端跨域问题）"""
+    invest_url = os.environ.get('INVEST_API_URL', 'http://invest-backend:5000')
+    action = request.args.get('action', 'latest')
+    try:
+        import requests
+        if action == 'history':
+            days = request.args.get('days', 30)
+            resp = requests.get(f"{invest_url}/api/market-sentiment", params={'action': 'history', 'days': days}, timeout=10)
+        else:
+            resp = requests.get(f"{invest_url}/api/market-sentiment", timeout=10)
+        return jsonify(resp.json())
+    except Exception as e:
+        logger.warning(f"市场情绪API不可用: {e}")
+        return jsonify({'error': f'市场情绪服务不可用: {str(e)}'}), 503
+
+
+@app.route('/api/portfolio')
+def api_portfolio():
+    """代理转发持仓数据API"""
+    invest_url = os.environ.get('INVEST_API_URL', 'http://invest-backend:5000')
+    try:
+        import requests
+        resp = requests.get(f"{invest_url}/api/portfolio", timeout=10)
+        return jsonify(resp.json())
+    except Exception as e:
+        logger.warning(f"持仓API不可用: {e}")
+        return jsonify({'error': f'持仓服务不可用: {str(e)}'}), 503
+
+
+@app.route('/api/invest-stats')
+def api_invest_stats():
+    """代理转发投资统计API"""
+    invest_url = os.environ.get('INVEST_API_URL', 'http://invest-backend:5000')
+    try:
+        import requests
+        resp = requests.get(f"{invest_url}/api/stats", timeout=10)
+        return jsonify(resp.json())
+    except Exception as e:
+        logger.warning(f"投资统计API不可用: {e}")
+        return jsonify({'error': f'投资统计服务不可用: {str(e)}'}), 503
+
+
+@app.route('/api/backtest-report')
+def api_backtest_report():
+    """获取回测报告"""
+    data_base = Path(os.environ.get("DATA_BASE", "/app/data"))
+    report_dir = data_base / "invest" / "backtest"
+    if not report_dir.exists():
+        report_dir = data_base / "invest" / "reports"
+    if not report_dir.exists():
+        return jsonify({"error": "回测报告目录不存在", "reports": []})
+
+    reports = []
+    for f in sorted(report_dir.glob("*"), key=lambda x: x.stat().st_mtime, reverse=True)[:10]:
+        reports.append({
+            "name": f.name,
+            "size_kb": round(f.stat().st_size / 1024, 1),
+            "modified": datetime.fromtimestamp(f.stat().st_mtime).strftime("%Y-%m-%d %H:%M"),
+        })
+
+    if not reports:
+        return jsonify({"reports": [], "message": "暂无回测报告"})
+
+    latest = report_dir / reports[0]["name"]
+    content = ""
+    try:
+        content = latest.read_text(encoding="utf-8")[:10000]
+    except Exception:
+        content = "无法读取报告内容"
+
+    return jsonify({"reports": reports, "latest_content": content})
+
+
 DASHBOARD_HTML = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -370,6 +445,18 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         .empty { text-align: center; padding: 40px; color: #999; }
         .refresh-btn { background: #1a1a2e; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
         .refresh-btn:hover { background: #16213e; }
+        .item-title a { color: #1a1a2e; text-decoration: none; }
+        .item-title a:hover { color: #e94560; text-decoration: underline; }
+        .portfolio-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; }
+        .portfolio-card { background: #f8f9fa; border-radius: 8px; padding: 15px; border-left: 4px solid #1a1a2e; }
+        .portfolio-card.profit { border-left-color: #00cc44; }
+        .portfolio-card.loss { border-left-color: #ff4444; }
+        .portfolio-card .fund-name { font-weight: 600; font-size: 15px; }
+        .portfolio-card .fund-detail { font-size: 13px; color: #666; margin-top: 8px; line-height: 1.6; }
+        .portfolio-card .pnl { font-size: 20px; font-weight: bold; margin-top: 5px; }
+        .pnl.positive { color: #00cc44; }
+        .pnl.negative { color: #ff4444; }
+        .backtest-content { background: #f8f9fa; border-radius: 6px; padding: 15px; font-family: monospace; font-size: 13px; white-space: pre-wrap; max-height: 400px; overflow-y: auto; line-height: 1.5; }
     </style>
 </head>
 <body>
@@ -456,6 +543,12 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         </div>
 
         <div class="section">
+            <h2>持仓日报</h2>
+            <div id="portfolio-summary" style="margin-bottom: 15px; font-size: 14px; color: #666;">加载中...</div>
+            <div id="portfolio-cards" class="portfolio-grid"><div class="empty">加载中...</div></div>
+        </div>
+
+        <div class="section">
             <h2>投资预警</h2>
             <div id="invest-alerts"><div class="empty">加载中...</div></div>
         </div>
@@ -482,6 +575,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             <h2>数据归档</h2>
             <div id="archive-info"><div class="empty">加载中...</div></div>
         </div>
+
+        <div class="section">
+            <h2>回测报告</h2>
+            <div id="backtest-info"><div class="empty">加载中...</div></div>
+        </div>
     </div>
 
     <script>
@@ -497,7 +595,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 document.getElementById('job-count').textContent = data.jobs.count;
 
                 renderList('trend-signals', data.trendradar.signals, item =>
-                    `<div class="item"><div class="item-title">${item.title}</div><div class="item-meta"><span class="badge badge-source">${item.source}</span> ${item.date}</div></div>`
+                    `<div class="item"><div class="item-title">${item.url ? `<a href="${item.url}" target="_blank" rel="noopener">${item.title}</a>` : item.title}</div><div class="item-meta"><span class="badge badge-source">${item.source}</span> ${item.date}</div></div>`
                 );
 
                 renderList('analyse-high', data.analyse.high_score, item =>
@@ -505,7 +603,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 );
 
                 renderList('job-high', data.jobs.high_score, item =>
-                    `<div class="item"><div class="item-title">${item.title} - ${item.company}</div><div class="item-meta"><span class="badge badge-score">匹配度 ${item.score}%</span></div></div>`
+                    `<div class="item"><div class="item-title">${item.url ? `<a href="${item.url}" target="_blank" rel="noopener">${item.title}</a>` : item.title} - ${item.company}</div><div class="item-meta"><span class="badge badge-score">匹配度 ${item.score}%</span></div></div>`
                 );
 
                 renderList('invest-alerts', data.invest.alerts, item =>
@@ -605,7 +703,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
                 el.innerHTML = `<div class="item"><div class="item-title">找到 ${data.total} 条结果</div></div>` +
                     data.results.map(item =>
-                        `<div class="item"><div class="item-title">${item.title}</div><div class="item-meta"><span class="badge badge-source">${item.source}</span> ${item.date}</div></div>`
+                        `<div class="item"><div class="item-title">${item.url ? `<a href="${item.url}" target="_blank" rel="noopener">${item.title}</a>` : item.title}</div><div class="item-meta"><span class="badge badge-source">${item.source}</span> ${item.date}</div></div>`
                     ).join('');
             } catch (e) {
                 console.error('搜索失败:', e);
@@ -743,6 +841,97 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             }
         }
 
+        async function loadPortfolio() {
+            try {
+                const resp = await fetchWithTimeout('/api/portfolio', {}, 8000);
+                if (!resp.ok) return;
+                const data = await resp.json();
+                if (data.error) {
+                    document.getElementById('portfolio-summary').textContent = '持仓服务暂不可用';
+                    document.getElementById('portfolio-cards').innerHTML = '<div class="empty">' + data.error + '</div>';
+                    return;
+                }
+
+                const holdings = data.holdings || data.funds || [];
+                const summary = data.summary || {};
+                const summaryEl = document.getElementById('portfolio-summary');
+                const cardsEl = document.getElementById('portfolio-cards');
+
+                if (summary.total_assets !== undefined) {
+                    const pnlClass = (summary.total_pnl || 0) >= 0 ? 'positive' : 'negative';
+                    const pnlSign = (summary.total_pnl || 0) >= 0 ? '+' : '';
+                    summaryEl.innerHTML = `总资产: <b>¥${(summary.total_assets || 0).toLocaleString()}</b> | 总盈亏: <span class="pnl ${pnlClass}">${pnlSign}¥${(summary.total_pnl || 0).toLocaleString()}</span> (${pnlSign}${(summary.total_pnl_pct || 0).toFixed(2)}%)`;
+                }
+
+                if (!holdings || holdings.length === 0) {
+                    cardsEl.innerHTML = '<div class="empty">暂无持仓数据</div>';
+                    return;
+                }
+
+                cardsEl.innerHTML = holdings.map(h => {
+                    const pnl = h.pnl || h.profit_loss || 0;
+                    const pnlPct = h.pnl_pct || h.profit_loss_pct || 0;
+                    const isProfit = pnl >= 0;
+                    const sign = isProfit ? '+' : '';
+                    return `<div class="portfolio-card ${isProfit ? 'profit' : 'loss'}">
+                        <div class="fund-name">${h.fund_name || h.name || '--'}</div>
+                        <div class="fund-detail">
+                            代码: ${h.fund_code || h.code || '--'} | 持有: ${h.shares || '--'}份<br>
+                            成本: ¥${(h.cost || h.avg_cost || 0).toFixed(4)} | 现价: ¥${(h.nav || h.current_nav || h.price || 0).toFixed(4)}
+                        </div>
+                        <div class="pnl ${isProfit ? 'positive' : 'negative'}">${sign}¥${pnl.toFixed(2)} (${sign}${pnlPct.toFixed(2)}%)</div>
+                    </div>`;
+                }).join('');
+
+                loadInvestAlerts();
+            } catch (e) {
+                console.log('持仓数据加载跳过:', e.message);
+                document.getElementById('portfolio-summary').textContent = '持仓服务暂不可用';
+            }
+        }
+
+        async function loadInvestAlerts() {
+            try {
+                const resp = await fetchWithTimeout('/api/invest-stats', {}, 5000);
+                if (!resp.ok) return;
+                const data = await resp.json();
+                if (data.alerts && data.alerts.length > 0) {
+                    renderList('invest-alerts', data.alerts, item =>
+                        `<div class="item"><div class="item-title">${item.fund_name || ''}</div><div class="item-meta"><span class="badge badge-hot">${item.alert_type || '预警'}</span> ${item.message || ''}</div></div>`
+                    );
+                }
+            } catch (e) {
+                console.log('投资预警加载跳过:', e.message);
+            }
+        }
+
+        async function loadBacktest() {
+            try {
+                const resp = await fetch('/api/backtest-report');
+                const data = await resp.json();
+                const el = document.getElementById('backtest-info');
+
+                if (data.error && (!data.reports || data.reports.length === 0)) {
+                    el.innerHTML = `<div class="empty">${data.error || data.message || '暂无回测报告'}</div>`;
+                    return;
+                }
+
+                let html = '';
+                if (data.reports && data.reports.length > 0) {
+                    html += `<div style="margin-bottom:10px;">共 ${data.reports.length} 份报告</div>`;
+                    data.reports.forEach(r => {
+                        html += `<div class="item"><div class="item-title">${r.name}</div><div class="item-meta">${r.size_kb} KB | ${r.modified}</div></div>`;
+                    });
+                }
+                if (data.latest_content) {
+                    html += `<div style="margin-top:15px;"><div style="font-weight:500; margin-bottom:8px;">最新报告内容：</div><div class="backtest-content">${data.latest_content}</div></div>`;
+                }
+                el.innerHTML = html || '<div class="empty">暂无回测报告</div>';
+            } catch (e) {
+                console.log('回测报告加载跳过:', e.message);
+            }
+        }
+
         async function fetchWithTimeout(url, options = {}, timeout = 5000) {
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), timeout);
@@ -762,12 +951,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                     console.log('Chart.js 尚未加载，跳过情绪图表');
                     return;
                 }
-                const investUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-                    ? 'http://localhost:5000' : 'http://invest-backend:5000';
 
-                const resp = await fetchWithTimeout(`${investUrl}/api/market-sentiment`, {}, 5000);
+                const resp = await fetchWithTimeout('/api/market-sentiment', {}, 5000);
                 if (!resp.ok) return;
                 const data = await resp.json();
+                if (data.error) { console.log('情绪数据不可用:', data.error); return; }
 
                 const gauge = document.getElementById('sentiment-gauge');
                 const level = document.getElementById('sentiment-level');
@@ -818,7 +1006,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                     }).join('');
                 }
 
-                const histResp = await fetchWithTimeout(`${investUrl}/api/market-sentiment?action=history&days=30`, {}, 5000);
+                const histResp = await fetchWithTimeout('/api/market-sentiment?action=history&days=30', {}, 5000);
                 if (histResp.ok) {
                     const histData = await histResp.json();
                     const history = histData.history || [];
@@ -852,8 +1040,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
         loadData();
         loadSentiment();
+        loadPortfolio();
+        loadBacktest();
         setInterval(loadData, 60000);
         setInterval(loadSentiment, 300000);
+        setInterval(loadPortfolio, 300000);
 
         var chartUrls = [
             'https://cdn.bootcdn.net/ajax/libs/Chart.js/4.4.7/chart.umd.min.js',

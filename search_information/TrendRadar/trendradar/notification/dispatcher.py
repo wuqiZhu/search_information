@@ -212,6 +212,23 @@ class NotificationDispatcher:
 
         return rss_new_items
 
+    @staticmethod
+    def _deduplicate_items(items: List[Dict], title_key: str = "title") -> List[Dict]:
+        """去除重复标题的新闻条目"""
+        if not items:
+            return items
+        seen = set()
+        unique = []
+        for item in items:
+            title = item.get(title_key, "").strip()
+            if not title:
+                continue
+            normalized = title[:20]
+            if normalized not in seen:
+                seen.add(normalized)
+                unique.append(item)
+        return unique
+
     def dispatch_all(
         self,
         report_data: Dict,
@@ -255,6 +272,15 @@ class NotificationDispatcher:
 
         # 执行个性化解读（如果启用）
         rss_new_items = self._enrich_personalized_insights(rss_new_items)
+
+        # 去重（减少重复推送）
+        if rss_new_items:
+            rss_new_items = self._deduplicate_items(rss_new_items)
+        if rss_items:
+            rss_items = self._deduplicate_items(rss_items)
+        for stat in report_data.get("stats", []):
+            if stat.get("titles"):
+                stat["titles"] = self._deduplicate_items(stat["titles"])
 
         # 飞书
         if self.config.get("FEISHU_WEBHOOK_URL"):
@@ -359,6 +385,96 @@ class NotificationDispatcher:
                 account_label = f"账号{i+1}" if len(accounts) > 1 else ""
                 result = send_func(account, account_label=account_label, **kwargs)
                 results.append(result)
+
+        return any(results) if results else False
+
+    def dispatch_daily_summary(
+        self,
+        summary_data: Dict[str, List[Dict]],
+        date_str: str = "",
+    ) -> Dict[str, bool]:
+        """
+        发送每日思维导图式总结
+
+        Args:
+            summary_data: 按类别分组的新闻数据，如 {"科技热点": [...], "投资信号": [...]}
+            date_str: 日期字符串
+
+        Returns:
+            每个渠道的发送结果
+        """
+        if not date_str:
+            from datetime import datetime
+            date_str = self.get_time_func().strftime("%Y-%m-%d")
+
+        markdown = self._render_daily_mindmap(summary_data, date_str)
+        results = {}
+
+        if self.config.get("DINGTALK_WEBHOOK_URL"):
+            results["dingtalk"] = self._send_daily_summary_dingtalk(markdown, date_str)
+
+        return results
+
+    def _render_daily_mindmap(self, summary_data: Dict[str, List[Dict]], date_str: str) -> str:
+        """生成思维导图式Markdown"""
+        lines = [f"# 📊 今日信息总结 ({date_str})", ""]
+
+        category_icons = {
+            "科技热点": "🔥", "投资信号": "💰", "求职机会": "💼",
+            "AI前沿": "🤖", "政策法规": "📋", "市场动态": "📈",
+        }
+
+        total = 0
+        for category, items in summary_data.items():
+            if not items:
+                continue
+            icon = category_icons.get(category, "📌")
+            lines.append(f"## {icon} {category} ({len(items)}条)")
+
+            for i, item in enumerate(items[:10]):
+                title = item.get("title", "")[:50]
+                source = item.get("source", item.get("feed_name", ""))
+                prefix = "├─" if i < min(len(items), 10) - 1 else "└─"
+                source_tag = f" [{source}]" if source else ""
+                lines.append(f"{prefix} {title}{source_tag}")
+                total += 1
+
+            lines.append("")
+
+        if total == 0:
+            lines.append("今日暂无重要信息更新。")
+        else:
+            lines.append(f"---")
+            lines.append(f"📊 共 {total} 条 | 由 TrendRadar 自动生成")
+
+        return "\n".join(lines)
+
+    def _send_daily_summary_dingtalk(self, markdown: str, date_str: str) -> bool:
+        """通过钉钉发送每日总结"""
+        import requests as req
+
+        webhooks = parse_multi_account_config(self.config["DINGTALK_WEBHOOK_URL"])
+        webhooks = limit_accounts(webhooks, self.max_accounts, "钉钉")
+
+        results = []
+        for url in webhooks:
+            if not url:
+                continue
+            try:
+                payload = {
+                    "msgtype": "markdown",
+                    "markdown": {
+                        "title": f"📊 今日信息总结 {date_str}",
+                        "text": markdown,
+                    },
+                }
+                resp = req.post(url, json=payload, timeout=30)
+                resp.raise_for_status()
+                print(f"✅ 钉钉每日总结发送成功")
+                results.append(True)
+            except Exception as e:
+                print(f"❌ 钉钉每日总结发送失败: {e}")
+                results.append(False)
 
         return any(results) if results else False
 

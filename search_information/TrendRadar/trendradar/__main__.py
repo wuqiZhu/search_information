@@ -1651,6 +1651,74 @@ class NewsAnalyzer:
                 import traceback
                 traceback.print_exc()
 
+    def _send_daily_summary_if_needed(self) -> None:
+        """在晚间发送每日思维导图总结"""
+        try:
+            now = self.ctx.get_time()
+            hour = now.hour
+            if hour < 20 or hour > 23:
+                return
+
+            data_dir = Path(self.ctx.config.get("STORAGE", {}).get("LOCAL", {}).get("DATA_DIR", "output"))
+            summary_flag = data_dir / ".daily_summary_sent"
+            today_str = now.strftime("%Y-%m-%d")
+            if summary_flag.exists():
+                flag_content = summary_flag.read_text(encoding="utf-8").strip()
+                if flag_content == today_str:
+                    return
+
+            dispatcher = self.ctx.create_notification_dispatcher()
+            if not self.ctx.config.get("DINGTALK_WEBHOOK_URL"):
+                return
+
+            summary_data = {}
+
+            news_db = data_dir / "news" / f"{today_str}.db"
+            if news_db.exists():
+                import sqlite3
+                conn = sqlite3.connect(str(news_db))
+                conn.row_factory = sqlite3.Row
+                rows = conn.execute("SELECT title, platform_id as source, url FROM news_items ORDER BY created_at DESC LIMIT 100").fetchall()
+                conn.close()
+                today_news = [dict(r) for r in rows]
+
+                tech = [n for n in today_news if any(k in n.get("title", "") for k in ["AI", "芯片", "半导体", "机器人", "量子", "算力", "自动驾驶", "GPU", "AIGC", "AGI", "CPU", "NPU"])]
+                invest = [n for n in today_news if any(k in n.get("title", "") for k in ["基金", "股票", "投资", "涨", "跌", "收益", "持仓", "ETF", "理财", "市场"])]
+                job = [n for n in today_news if any(k in n.get("title", "") for k in ["招聘", "实习", "校招", "社招", "岗位", "薪资", "求职", "offer"])]
+                other = [n for n in today_news if n not in tech and n not in invest and n not in job]
+
+                if tech:
+                    summary_data["科技热点"] = tech[:10]
+                if invest:
+                    summary_data["投资信号"] = invest[:10]
+                if job:
+                    summary_data["求职机会"] = job[:10]
+                if other:
+                    summary_data["综合资讯"] = other[:10]
+
+            if not summary_data:
+                rss_db = data_dir / "rss" / f"{today_str}.db"
+                if rss_db.exists():
+                    import sqlite3
+                    conn = sqlite3.connect(str(rss_db))
+                    conn.row_factory = sqlite3.Row
+                    rows = conn.execute("SELECT title, feed_name, url FROM rss_items ORDER BY created_at DESC LIMIT 50").fetchall()
+                    conn.close()
+                    if rows:
+                        summary_data["RSS资讯"] = [dict(r) for r in rows[:20]]
+
+            if summary_data:
+                print("[每日总结] 正在发送晚间思维导图总结...")
+                dispatcher.dispatch_daily_summary(summary_data, today_str)
+                summary_flag.parent.mkdir(parents=True, exist_ok=True)
+                summary_flag.write_text(today_str, encoding="utf-8")
+                print("[每日总结] 发送完成")
+            else:
+                print("[每日总结] 今日暂无数据，跳过总结")
+
+        except Exception as e:
+            print(f"[每日总结] 发送失败: {e}")
+
     def run(self) -> None:
         """执行分析流程"""
         try:
@@ -1670,6 +1738,9 @@ class NewsAnalyzer:
                 rss_items=rss_items, rss_new_items=rss_new_items,
                 raw_rss_items=raw_rss_items
             )
+
+            # 晚间发送每日思维导图总结
+            self._send_daily_summary_if_needed()
 
         except Exception as e:
             print(f"分析流程执行出错: {e}")
