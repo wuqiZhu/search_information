@@ -8,7 +8,7 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-DB_PATH = "./shared/data/analyzer.db"
+DB_PATH = "./knowledge_base/analyzer.db"
 _db_lock = threading.Lock()
 
 

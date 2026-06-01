@@ -5,7 +5,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
-def generate_daily_digest(db_path: str = "./shared/data/analyzer.db", output_dir: str = "./knowledge_base/obsidian") -> str:
+def generate_daily_digest(db_path: str = "./knowledge_base/analyzer.db", output_dir: str = "./knowledge_base/obsidian") -> str:
     import sqlite3
     import json
 
@@ -112,7 +112,7 @@ def generate_daily_digest(db_path: str = "./shared/data/analyzer.db", output_dir
     return str(filepath)
 
 
-def generate_weekly_digest(db_path: str = "./shared/data/analyzer.db", output_dir: str = "./knowledge_base/obsidian") -> str:
+def generate_weekly_digest(db_path: str = "./knowledge_base/analyzer.db", output_dir: str = "./knowledge_base/obsidian") -> str:
     import sqlite3
 
     conn = sqlite3.connect(db_path, timeout=10)
