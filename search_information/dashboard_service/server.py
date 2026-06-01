@@ -279,8 +279,8 @@ def api_search():
 @app.route('/api/semantic-search', methods=['POST'])
 def api_semantic_search():
     """语义搜索（调用语义搜索API服务）"""
-    data = request.get_json()
-    if not data or 'query' not in data:
+    data = request.get_json(silent=True)
+    if not data or not data.get('query'):
         return jsonify({'error': '缺少query参数'}), 400
 
     semantic_search_url = os.environ.get('SEMANTIC_SEARCH_URL', 'http://semantic-search:5070')
@@ -309,15 +309,18 @@ def api_semantic_search():
 @app.route('/api/rag-ask', methods=['POST'])
 def api_rag_ask():
     """RAG问答（调用语义搜索API服务）"""
-    data = request.get_json()
-    if not data or 'question' not in data:
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({'error': '无效的JSON数据'}), 400
+    question = data.get('question') or data.get('query')
+    if not question:
         return jsonify({'error': '缺少question参数'}), 400
 
     semantic_search_url = os.environ.get('SEMANTIC_SEARCH_URL', 'http://semantic-search:5070')
     
     # 转换参数名：question -> query, top_k -> limit
     ask_params = {
-        'query': data.get('question'),
+        'query': question,
         'limit': data.get('top_k', 5)
     }
     
