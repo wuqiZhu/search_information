@@ -881,7 +881,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 @app.route('/')
 def dashboard():
     """Dashboard 主页"""
-    return render_template_string(DASHBOARD_HTML)
+    return DASHBOARD_HTML
 
 
 def create_app():
