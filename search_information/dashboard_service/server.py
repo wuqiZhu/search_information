@@ -680,7 +680,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 }
 
                 let html = `<div class="item">
-                    <div class="item-title" style="font-size:15px; line-height:1.8;">${(data.answer || '').replace(/\n/g, '<br>')}</div>
+                    <div class="item-title" style="font-size:15px; line-height:1.8;">${(data.answer || '').replace(/\\n/g, '<br>')}</div>
                     <div class="item-meta" style="margin-top:10px;">
                         <span class="badge badge-score">置信度 ${((data.confidence || 0) * 100).toFixed(0)}%</span>
                     </div>
