@@ -342,7 +342,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - 信息分析系统</title>
-    <script src="https://cdn.bootcdn.net/ajax/libs/Chart.js/4.4.7/chart.umd.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/Chart.js/4.4.7/chart.umd.min.js" async></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; color: #333; }
@@ -528,6 +528,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
         async function loadTrend() {
             try {
+                if (typeof Chart === 'undefined') {
+                    console.log('Chart.js 尚未加载，跳过图表渲染');
+                    return;
+                }
                 const resp = await fetch('/api/trend?days=7');
                 const data = await resp.json();
 
@@ -752,6 +756,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
         async function loadSentiment() {
             try {
+                if (typeof Chart === 'undefined') {
+                    console.log('Chart.js 尚未加载，跳过情绪图表');
+                    return;
+                }
                 const investUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
                     ? 'http://localhost:5000' : 'http://invest-backend:5000';
 
@@ -844,6 +852,16 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         loadSentiment();
         setInterval(loadData, 60000);
         setInterval(loadSentiment, 300000);
+
+        function waitForChartjs(retries) {
+            if (typeof Chart !== 'undefined') {
+                loadTrend();
+                loadSentiment();
+            } else if (retries > 0) {
+                setTimeout(function(){ waitForChartjs(retries - 1); }, 2000);
+            }
+        }
+        waitForChartjs(30);
     </script>
 </body>
 </html>"""
