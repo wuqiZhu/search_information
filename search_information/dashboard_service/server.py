@@ -285,12 +285,18 @@ def api_semantic_search():
 
     semantic_search_url = os.environ.get('SEMANTIC_SEARCH_URL', 'http://semantic-search:5070')
     
+    # 转换参数名：top_k -> limit
+    search_params = {
+        'query': data.get('query'),
+        'limit': data.get('top_k', data.get('limit', 10))
+    }
+    
     try:
         import requests
         response = requests.post(
             f"{semantic_search_url}/api/search",
-            json=data,
-            timeout=10
+            json=search_params,
+            timeout=15
         )
         return jsonify(response.json())
     except ImportError:
@@ -309,11 +315,17 @@ def api_rag_ask():
 
     semantic_search_url = os.environ.get('SEMANTIC_SEARCH_URL', 'http://semantic-search:5070')
     
+    # 转换参数名：question -> query, top_k -> limit
+    ask_params = {
+        'query': data.get('question'),
+        'limit': data.get('top_k', 5)
+    }
+    
     try:
         import requests
         response = requests.post(
             f"{semantic_search_url}/api/ask",
-            json=data,
+            json=ask_params,
             timeout=30
         )
         return jsonify(response.json())
