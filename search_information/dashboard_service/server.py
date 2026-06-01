@@ -360,7 +360,7 @@ def api_semantic_search():
     try:
         import requests
         response = requests.post(
-            f"{semantic_search_url}/api/search",
+            f"{semantic_search_url}/api/semantic-search",
             json=search_params,
             timeout=15
         )
@@ -393,7 +393,7 @@ def api_rag_ask():
     try:
         import requests
         response = requests.post(
-            f"{semantic_search_url}/api/ask",
+            f"{semantic_search_url}/api/rag-ask",
             json=ask_params,
             timeout=30
         )
