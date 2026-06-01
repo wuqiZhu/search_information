@@ -47,7 +47,7 @@ echo "2. 服务健康检查"
 # ============================================================
 check "docker ps | grep -q semantic-search" "semantic-search 运行中"
 check "curl -s --max-time 5 http://localhost:5050/health | grep -q ok" "通知中心(5050)"
-check "curl -s --max-time 5 http://localhost:5060/api/health | grep -q ok" "仪表盘(5060)"
+check "curl -s --max-time 5 http://localhost:8085/api/health | grep -q ok" "仪表盘(8085)"
 check "curl -s --max-time 5 http://localhost:5000/api/health | grep -q ok" "投资后端(5000)"
 check "curl -s --max-time 5 http://localhost:5070/api/health | grep -q ok" "语义搜索(5070)"
 
