@@ -342,7 +342,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - 信息分析系统</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/Chart.js/4.4.7/chart.umd.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; color: #333; }
@@ -737,12 +737,25 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             }
         }
 
+        async function fetchWithTimeout(url, options = {}, timeout = 5000) {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+            try {
+                const resp = await fetch(url, {...options, signal: controller.signal});
+                clearTimeout(id);
+                return resp;
+            } catch(e) {
+                clearTimeout(id);
+                throw e;
+            }
+        }
+
         async function loadSentiment() {
             try {
                 const investUrl = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
                     ? 'http://localhost:5000' : 'http://invest-backend:5000';
 
-                const resp = await fetch(`${investUrl}/api/market-sentiment`);
+                const resp = await fetchWithTimeout(`${investUrl}/api/market-sentiment`, {}, 5000);
                 if (!resp.ok) return;
                 const data = await resp.json();
 
@@ -795,7 +808,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                     }).join('');
                 }
 
-                const histResp = await fetch(`${investUrl}/api/market-sentiment?action=history&days=30`);
+                const histResp = await fetchWithTimeout(`${investUrl}/api/market-sentiment?action=history&days=30`, {}, 5000);
                 if (histResp.ok) {
                     const histData = await histResp.json();
                     const history = histData.history || [];
