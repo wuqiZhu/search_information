@@ -48,6 +48,7 @@ from trendradar.notification.senders import (
     SMTP_CONFIGS,
 )
 from trendradar.notification.dispatcher import NotificationDispatcher
+from trendradar.notification.enhanced_sender import send_enhanced_dingtalk
 
 __all__ = [
     # 推送记录管理
@@ -76,6 +77,7 @@ __all__ = [
     "send_to_bark",
     "send_to_slack",
     "send_to_invest_api",
+    "send_enhanced_dingtalk",
     "SMTP_CONFIGS",
     # 通知调度器
     "NotificationDispatcher",

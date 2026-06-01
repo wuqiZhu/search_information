@@ -614,10 +614,358 @@ def render_html_content(
                 overflow: hidden;
             }
 
+            /* RSS 卡片式布局（带图片） */
+            .rss-card {
+                display: flex;
+                gap: 14px;
+                margin-bottom: 12px;
+                padding: 14px;
+                background: #f0fdf4;
+                border-radius: 10px;
+                border-left: 3px solid #10b981;
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+
+            .rss-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+            }
+
+            .rss-card:last-child {
+                margin-bottom: 0;
+            }
+
+            .rss-card-image {
+                flex-shrink: 0;
+                width: 120px;
+                height: 80px;
+                border-radius: 8px;
+                overflow: hidden;
+                background: #e5e7eb;
+            }
+
+            .rss-card-image img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                transition: transform 0.3s ease;
+            }
+
+            .rss-card:hover .rss-card-image img {
+                transform: scale(1.05);
+            }
+
+            .rss-card-body {
+                flex: 1;
+                min-width: 0;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+            }
+
+            .rss-card-title {
+                font-size: 14px;
+                font-weight: 500;
+                line-height: 1.4;
+                color: #1a1a1a;
+                margin-bottom: 6px;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+
+            .rss-card-title a {
+                color: #1f2937;
+                text-decoration: none;
+            }
+
+            .rss-card-title a:hover {
+                color: #059669;
+                text-decoration: underline;
+            }
+
+            .rss-card-meta {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+
+            .rss-card-source {
+                font-size: 12px;
+                color: #059669;
+                font-weight: 500;
+                background: #ecfdf5;
+                padding: 2px 8px;
+                border-radius: 4px;
+            }
+
+            .rss-card-time {
+                font-size: 11px;
+                color: #9ca3af;
+            }
+
+            .rss-card-new {
+                font-size: 10px;
+                font-weight: 700;
+                color: #dc2626;
+                background: #fef2f2;
+                padding: 2px 6px;
+                border-radius: 4px;
+            }
+
+            @media (max-width: 480px) {
+                .rss-card {
+                    flex-direction: column;
+                }
+                .rss-card-image {
+                    width: 100%;
+                    height: 140px;
+                }
+            }
+
             /* 独立展示区样式 - 复用热点词汇统计区样式 */
             .standalone-section {
                 margin-top: 32px;
                 padding-top: 24px;
+            }
+
+            /* 故事线样式 */
+            .storyline-section {
+                margin-top: 32px;
+                padding-top: 24px;
+            }
+
+            .storyline-header {
+                margin-bottom: 24px;
+            }
+
+            .storyline-title {
+                font-size: 18px;
+                font-weight: 600;
+                color: #1a1a1a;
+                margin-bottom: 4px;
+            }
+
+            .storyline-subtitle {
+                font-size: 13px;
+                color: #9ca3af;
+            }
+
+            .story-card {
+                background: #f8fafc;
+                border-radius: 12px;
+                padding: 20px;
+                margin-bottom: 20px;
+                border: 1px solid #e2e8f0;
+            }
+
+            .story-card-header {
+                display: flex;
+                align-items: flex-start;
+                gap: 14px;
+                margin-bottom: 14px;
+            }
+
+            .story-card-number {
+                width: 32px;
+                height: 32px;
+                background: linear-gradient(135deg, #6366f1, #8b5cf6);
+                color: white;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 700;
+                font-size: 14px;
+                flex-shrink: 0;
+            }
+
+            .story-card-info {
+                flex: 1;
+            }
+
+            .story-card-keyword {
+                font-size: 16px;
+                font-weight: 600;
+                color: #1e293b;
+                margin-bottom: 6px;
+            }
+
+            .story-card-meta {
+                display: flex;
+                gap: 12px;
+                flex-wrap: wrap;
+            }
+
+            .story-meta-item {
+                font-size: 12px;
+                color: #64748b;
+                background: #e2e8f0;
+                padding: 2px 8px;
+                border-radius: 4px;
+            }
+
+            .story-card-sources {
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
+                margin-bottom: 16px;
+            }
+
+            .story-source-tag {
+                font-size: 11px;
+                color: #6366f1;
+                background: #eef2ff;
+                padding: 3px 10px;
+                border-radius: 12px;
+                font-weight: 500;
+            }
+
+            .story-timeline {
+                position: relative;
+                padding-left: 24px;
+            }
+
+            .story-timeline::before {
+                content: '';
+                position: absolute;
+                left: 8px;
+                top: 8px;
+                bottom: 8px;
+                width: 2px;
+                background: #e2e8f0;
+            }
+
+            .timeline-node,
+            .timeline-node-first,
+            .timeline-node-last {
+                position: relative;
+                padding-bottom: 16px;
+            }
+
+            .timeline-node-last {
+                padding-bottom: 0;
+            }
+
+            .timeline-dot {
+                position: absolute;
+                left: -20px;
+                top: 6px;
+                width: 10px;
+                height: 10px;
+                background: #6366f1;
+                border-radius: 50%;
+                border: 2px solid white;
+                box-shadow: 0 0 0 2px #6366f1;
+            }
+
+            .timeline-node-first .timeline-dot {
+                background: #10b981;
+                box-shadow: 0 0 0 2px #10b981;
+            }
+
+            .timeline-content {
+                background: white;
+                padding: 12px 14px;
+                border-radius: 8px;
+                border: 1px solid #e2e8f0;
+            }
+
+            .timeline-time {
+                font-size: 11px;
+                color: #94a3b8;
+                margin-bottom: 4px;
+            }
+
+            .timeline-title {
+                font-size: 14px;
+                line-height: 1.5;
+                color: #1e293b;
+                margin-bottom: 4px;
+            }
+
+            .timeline-link {
+                color: #1e293b;
+                text-decoration: none;
+            }
+
+            .timeline-link:hover {
+                color: #6366f1;
+                text-decoration: underline;
+            }
+
+            .timeline-source {
+                font-size: 11px;
+                color: #6366f1;
+                font-weight: 500;
+            }
+
+            /* 个性化解读样式 */
+            .personalized-insight {
+                background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+                border-radius: 10px;
+                padding: 14px;
+                margin-top: 10px;
+                border-left: 3px solid #0ea5e9;
+            }
+
+            .insight-headline {
+                font-size: 14px;
+                font-weight: 600;
+                color: #0c4a6e;
+                margin-bottom: 10px;
+            }
+
+            .insight-areas {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                margin-bottom: 10px;
+            }
+
+            .insight-area {
+                background: white;
+                border-radius: 8px;
+                padding: 10px;
+            }
+
+            .insight-area.relevance-high {
+                border-left: 3px solid #ef4444;
+            }
+
+            .insight-area.relevance-medium {
+                border-left: 3px solid #f59e0b;
+            }
+
+            .insight-area.relevance-low {
+                border-left: 3px solid #22c55e;
+            }
+
+            .insight-area-name {
+                font-size: 12px;
+                font-weight: 600;
+                color: #374151;
+                margin-bottom: 4px;
+            }
+
+            .insight-area-impact {
+                font-size: 13px;
+                color: #4b5563;
+                line-height: 1.5;
+            }
+
+            .insight-actions {
+                background: white;
+                border-radius: 8px;
+                padding: 10px;
+            }
+
+            .insight-action {
+                font-size: 13px;
+                color: #1e40af;
+                padding: 4px 0;
             }
 
             .standalone-section-header {
@@ -1049,32 +1397,72 @@ def render_html_content(
                 time_display = title_data.get("time_display", "")
                 source_name = title_data.get("source_name", "")
                 is_new = title_data.get("is_new", False)
+                image_url = title_data.get("image_url", "")
+                summary = title_data.get("summary", "")
 
-                rss_html += """
+                # 如果有图片，使用卡片式布局
+                if image_url:
+                    rss_html += """
+                        <div class="rss-card">
+                            <div class="rss-card-image">
+                                <img src="{image_url}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'">
+                            </div>
+                            <div class="rss-card-body">
+                                <div class="rss-card-title">""".format(image_url=html_escape(image_url))
+
+                    escaped_title = html_escape(item_title)
+                    if url:
+                        escaped_url = html_escape(url)
+                        rss_html += f'<a href="{escaped_url}" target="_blank">{escaped_title}</a>'
+                    else:
+                        rss_html += escaped_title
+
+                    rss_html += """</div>
+                                <div class="rss-card-meta">"""
+
+                    if source_name:
+                        rss_html += f'<span class="rss-card-source">{html_escape(source_name)}</span>'
+
+                    if time_display:
+                        rss_html += f'<span class="rss-card-time">{html_escape(time_display)}</span>'
+
+                    if is_new:
+                        rss_html += '<span class="rss-card-new">NEW</span>'
+
+                    rss_html += """
+                                </div>
+                            </div>
+                        </div>"""
+                else:
+                    # 无图片时使用原有布局
+                    rss_html += """
                         <div class="rss-item">
                             <div class="rss-meta">"""
 
-                if time_display:
-                    rss_html += f'<span class="rss-time">{html_escape(time_display)}</span>'
+                    if time_display:
+                        rss_html += f'<span class="rss-time">{html_escape(time_display)}</span>'
 
-                if source_name:
-                    rss_html += f'<span class="rss-author">{html_escape(source_name)}</span>'
+                    if source_name:
+                        rss_html += f'<span class="rss-author">{html_escape(source_name)}</span>'
 
-                if is_new:
-                    rss_html += '<span class="rss-author" style="color: #dc2626;">NEW</span>'
+                    if is_new:
+                        rss_html += '<span class="rss-author" style="color: #dc2626;">NEW</span>'
 
-                rss_html += """
+                    rss_html += """
                             </div>
                             <div class="rss-title">"""
 
-                escaped_title = html_escape(item_title)
-                if url:
-                    escaped_url = html_escape(url)
-                    rss_html += f'<a href="{escaped_url}" target="_blank" class="rss-link">{escaped_title}</a>'
-                else:
-                    rss_html += escaped_title
+                    escaped_title = html_escape(item_title)
+                    if url:
+                        escaped_url = html_escape(url)
+                        rss_html += f'<a href="{escaped_url}" target="_blank" class="rss-link">{escaped_title}</a>'
+                    else:
+                        rss_html += escaped_title
 
-                rss_html += """
+                    if summary:
+                        rss_html += f'<p class="rss-summary">{html_escape(summary[:150])}</p>'
+
+                    rss_html += """
                             </div>
                         </div>"""
 
@@ -1243,7 +1631,7 @@ def render_html_content(
             standalone_html += """
                     </div>"""
 
-        # 渲染 RSS 源（复用相同结构）
+        # 渲染 RSS 源（复用相同结构，支持图片卡片）
         for feed in rss_feeds:
             feed_name = feed.get("name", feed.get("id", ""))
             items = feed.get("items", [])
@@ -1262,43 +1650,85 @@ def render_html_content(
                 url = item.get("url", "")
                 published_at = item.get("published_at", "")
                 author = item.get("author", "")
+                image_url = item.get("image_url", "")
 
-                standalone_html += f"""
+                # 如果有图片，使用卡片式布局
+                if image_url:
+                    standalone_html += f"""
+                        <div class="rss-card">
+                            <div class="rss-card-image">
+                                <img src="{html_escape(image_url)}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'">
+                            </div>
+                            <div class="rss-card-body">
+                                <div class="rss-card-title">"""
+
+                    escaped_title = html_escape(title)
+                    if url:
+                        escaped_url = html_escape(url)
+                        standalone_html += f'<a href="{escaped_url}" target="_blank">{escaped_title}</a>'
+                    else:
+                        standalone_html += escaped_title
+
+                    standalone_html += """</div>
+                                <div class="rss-card-meta">"""
+
+                    if published_at:
+                        try:
+                            from datetime import datetime as dt
+                            if "T" in published_at:
+                                dt_obj = dt.fromisoformat(published_at.replace("Z", "+00:00"))
+                                time_display = dt_obj.strftime("%m-%d %H:%M")
+                            else:
+                                time_display = published_at
+                        except:
+                            time_display = published_at
+                        standalone_html += f'<span class="rss-card-time">{html_escape(time_display)}</span>'
+
+                    if author:
+                        standalone_html += f'<span class="rss-card-source">{html_escape(author)}</span>'
+
+                    standalone_html += """
+                                </div>
+                            </div>
+                        </div>"""
+                else:
+                    # 无图片时使用原有布局
+                    standalone_html += f"""
                         <div class="news-item">
                             <div class="news-number">{j}</div>
                             <div class="news-content">
                                 <div class="news-header">"""
 
-                # 时间显示（格式化 ISO 时间）
-                if published_at:
-                    try:
-                        from datetime import datetime as dt
-                        if "T" in published_at:
-                            dt_obj = dt.fromisoformat(published_at.replace("Z", "+00:00"))
-                            time_display = dt_obj.strftime("%m-%d %H:%M")
-                        else:
+                    # 时间显示（格式化 ISO 时间）
+                    if published_at:
+                        try:
+                            from datetime import datetime as dt
+                            if "T" in published_at:
+                                dt_obj = dt.fromisoformat(published_at.replace("Z", "+00:00"))
+                                time_display = dt_obj.strftime("%m-%d %H:%M")
+                            else:
+                                time_display = published_at
+                        except:
                             time_display = published_at
-                    except:
-                        time_display = published_at
 
-                    standalone_html += f'<span class="time-info">{html_escape(time_display)}</span>'
+                        standalone_html += f'<span class="time-info">{html_escape(time_display)}</span>'
 
-                # 作者显示
-                if author:
-                    standalone_html += f'<span class="source-name">{html_escape(author)}</span>'
+                    # 作者显示
+                    if author:
+                        standalone_html += f'<span class="source-name">{html_escape(author)}</span>'
 
-                standalone_html += """
+                    standalone_html += """
                                 </div>
                                 <div class="news-title">"""
 
-                escaped_title = html_escape(title)
-                if url:
-                    escaped_url = html_escape(url)
-                    standalone_html += f'<a href="{escaped_url}" target="_blank" class="news-link">{escaped_title}</a>'
-                else:
-                    standalone_html += escaped_title
+                    escaped_title = html_escape(title)
+                    if url:
+                        escaped_url = html_escape(url)
+                        standalone_html += f'<a href="{escaped_url}" target="_blank" class="news-link">{escaped_title}</a>'
+                    else:
+                        standalone_html += escaped_title
 
-                standalone_html += """
+                    standalone_html += """
                                 </div>
                             </div>
                         </div>"""
@@ -1310,7 +1740,34 @@ def render_html_content(
                 </div>"""
         return standalone_html
 
-    # 生成 RSS 统计和新增 HTML
+    # 生成 RSS 统计和新增 HTML（带图片抓取）
+    def enrich_rss_with_images(items: List[Dict], max_items: int = 10) -> List[Dict]:
+        """为 RSS 条目抓取图片"""
+        if not items:
+            return items
+
+        try:
+            from trendradar.ai.news_enricher import enrich_news_items
+            enriched = enrich_news_items(items, max_items=max_items)
+            # 将图片信息合并回原始数据
+            for i, enriched_item in enumerate(enriched):
+                if i < len(items) and enriched_item.get("image_url"):
+                    items[i]["image_url"] = enriched_item["image_url"]
+        except Exception as e:
+            print(f"[HTML报告] 图片抓取失败: {e}")
+
+        return items
+
+    # 为 RSS 新增条目抓取图片（最多10条）
+    if rss_new_items:
+        rss_new_items = enrich_rss_with_images(rss_new_items, max_items=10)
+
+    # 为独立展示区的 RSS 条目抓取图片
+    if standalone_data and standalone_data.get("rss_feeds"):
+        for feed in standalone_data["rss_feeds"]:
+            if feed.get("items"):
+                feed["items"] = enrich_rss_with_images(feed["items"], max_items=5)
+
     rss_stats_html = render_rss_stats_html(rss_items, "RSS 订阅更新") if rss_items else ""
     rss_new_html = render_rss_stats_html(rss_new_items, "RSS 新增更新") if rss_new_items else ""
 
@@ -1320,6 +1777,15 @@ def render_html_content(
     # 生成 AI 分析 HTML
     ai_html = render_ai_analysis_html_rich(ai_analysis) if ai_analysis else ""
 
+    # 生成故事线 HTML
+    storyline_html = ""
+    try:
+        from trendradar.report.storyline import build_storylines, render_storyline_html
+        stories = build_storylines(report_data, rss_items, rss_new_items, max_stories=3)
+        storyline_html = render_storyline_html(stories)
+    except Exception as e:
+        print(f"[HTML报告] 故事线生成失败: {e}")
+
     # 准备各区域内容映射
     region_contents = {
         "hotlist": stats_html,
@@ -1327,6 +1793,7 @@ def render_html_content(
         "new_items": (new_titles_html, rss_new_html),  # 元组，分别处理
         "standalone": standalone_html,
         "ai_analysis": ai_html,
+        "storyline": storyline_html,
     }
 
     def add_section_divider(content: str) -> str:

@@ -266,6 +266,27 @@ def _load_ai_analysis_config(config_data: Dict) -> Dict:
             },
             "ONCE_PER_DAY": window_once_per_day_env if window_once_per_day_env is not None else analysis_window.get("once_per_day", False),
         },
+        # 个性化解读配置
+        "PERSONALIZED": _load_personalized_config(ai_config),
+    }
+
+
+def _load_personalized_config(ai_analysis_config: Dict) -> Dict:
+    """加载个性化解读配置"""
+    personalized = ai_analysis_config.get("personalized", {})
+    profile = personalized.get("profile", {})
+
+    return {
+        "ENABLED": personalized.get("enabled", False),
+        "MAX_ITEMS": personalized.get("max_items", 5),
+        "LANGUAGE": ai_analysis_config.get("language", "Chinese"),
+        "PROFILE": {
+            "ROLES": profile.get("roles", ["学生", "投资者", "公众"]),
+            "CAREER_FIELDS": profile.get("career_fields", ["嵌入式Linux", "Linux应用开发"]),
+            "INVESTMENT_INTERESTS": profile.get("investment_interests", ["科技股", "半导体"]),
+            "FOCUS_AREAS": profile.get("focus_areas", ["技术趋势", "政策红利"]),
+            "CUSTOM_DESCRIPTION": profile.get("custom_description", ""),
+        },
     }
 
 
@@ -337,11 +358,17 @@ def _load_webhook_config(config_data: Dict) -> Dict:
     generic = channels.get("generic_webhook", {})
     invest = channels.get("invest", {})
 
+    # 钉钉增强模式配置
+    dingtalk_enhanced = dingtalk.get("enhanced", {})
+
     return {
         # 飞书
         "FEISHU_WEBHOOK_URL": _get_env_str("FEISHU_WEBHOOK_URL") or feishu.get("webhook_url", ""),
         # 钉钉
         "DINGTALK_WEBHOOK_URL": _get_env_str("DINGTALK_WEBHOOK_URL") or dingtalk.get("webhook_url", ""),
+        "DINGTALK_SECRET": _get_env_str("DINGTALK_SECRET") or dingtalk.get("secret", ""),
+        "DINGTALK_ENHANCED_ENABLED": dingtalk_enhanced.get("enabled", False),
+        "DINGTALK_ENHANCED_MAX_ITEMS": int(dingtalk_enhanced.get("max_items", 5)),
         # 企业微信
         "WEWORK_WEBHOOK_URL": _get_env_str("WEWORK_WEBHOOK_URL") or wework.get("webhook_url", ""),
         "WEWORK_MSG_TYPE": _get_env_str("WEWORK_MSG_TYPE") or wework.get("msg_type", "markdown"),

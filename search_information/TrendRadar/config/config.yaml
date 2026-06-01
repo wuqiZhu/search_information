@@ -185,8 +185,9 @@ display:
     - new_items                       # 1️⃣ 新增热点区域
     - hotlist                         # 2️⃣ 热榜区域（关键词匹配）
     - rss                             # 3️⃣ RSS 订阅区域
-    - standalone                      # 4️⃣ 独立展示区
-    - ai_analysis                     # 5️⃣ AI 分析区域
+    - storyline                       # 4️⃣ 故事线区域（事件脉络聚合）
+    - standalone                      # 5️⃣ 独立展示区
+    - ai_analysis                     # 6️⃣ AI 分析区域
 
   # 推送区域开关
   # 控制各区域是否启用（配合 region_order 使用）
@@ -199,7 +200,9 @@ display:
                                       # 开启后将对 RSS 进行关键词分析并在通知中展示
                                       # 关闭后跳过分析，但独立展示区不受影响
 
-    standalone: false                 # 独立展示区（完整热榜/RSS，不受关键词过滤）
+    standalone: false                 # 独立展示区（㉮ 未筛选/RSS，不受关键词过滤）
+    storyline: true                   # 故事线区域（事件脉络聚合）
+                                      # 将相关新闻按时间和来源聚合，展示事件发展脉络
     ai_analysis: true                 # AI 分析区域
 
   # 📋 独立展示区配置（仅在 regions.standalone: true 时生效）
@@ -258,6 +261,16 @@ notification:
 
     dingtalk:
       webhook_url: "${DINGTALK_WEBHOOK}"  # 钉钉机器人 webhook URL，从 .env 读取
+      secret: ""                          # 钉钉机器人加签密钥（可选，用于 HMAC 签名验证）
+                                          # 设置后 webhook URL 会自动附加 timestamp 和 sign 参数
+                                          # 建议通过环境变量 DINGTALK_SECRET 设置
+
+      # 增强模式配置
+      # 启用后会在常规报告之后额外发送带图片的新闻卡片（feedCard）
+      # 效果：每条 RSS 新闻显示为带图片的卡片，点击可跳转原文
+      enhanced:
+        enabled: true                     # 是否启用增强模式
+        max_items: 5                      # 最多抓取图片的新闻条数（每条需要请求文章页面，建议不超过10）
 
     wework:
       webhook_url: ""                 # 企业微信机器人 webhook URL
@@ -467,6 +480,47 @@ ai_analysis:
                                     # false: 使用简化格式（排名范围+时间范围+出现次数）
                                     # true: 传递完整排名变化轨迹（如 1(09:30)→2(10:00)→0(11:00)）
                                     # 启用后 AI 能更精确分析热度趋势，但会额外增加 token 消耗（0.5 倍到 1 倍）
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 个性化解读配置（P3 功能）
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 基于用户画像，为新闻生成"这对你意味着什么"的个性化解读
+  personalized:
+    enabled: true                     # 是否启用个性化解读
+    max_items: 5                      # 每次分析的新闻条数上限
+
+    # 用户画像配置
+    profile:
+      # 基础身份（可多选）
+      roles:
+        - "学生"
+        - "投资者"
+        - "公众"
+
+      # 职业方向（用于职业相关解读）
+      career_fields:
+        - "嵌入式Linux"
+        - "Linux应用开发"
+        - "C/C++开发"
+        - "物联网"
+
+      # 投资偏好（用于投资相关解读）
+      investment_interests:
+        - "科技股"
+        - "半导体"
+        - "新能源"
+        - "AI"
+        - "消费电子"
+
+      # 关注领域（用于综合解读）
+      focus_areas:
+        - "技术趋势"
+        - "政策红利"
+        - "职业发展"
+        - "消费省钱"
+
+      # 自定义描述（可选，补充个人特点）
+      custom_description: ""
 
 
 # ===============================================================

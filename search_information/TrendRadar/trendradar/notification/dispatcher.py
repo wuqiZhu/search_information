@@ -33,6 +33,7 @@ from .senders import (
     send_to_generic_webhook,
     send_to_invest_api,
 )
+from .enhanced_sender import send_enhanced_dingtalk
 from .renderer import (
     render_rss_feishu_content,
     render_rss_dingtalk_content,
@@ -160,6 +161,57 @@ class NotificationDispatcher:
 
         return report_data, rss_items, rss_new_items
 
+    def _enrich_personalized_insights(
+        self,
+        rss_new_items: Optional[List[Dict]] = None,
+    ) -> Optional[List[Dict]]:
+        """
+        为 RSS 新闻添加个性化解读
+
+        Args:
+            rss_new_items: RSS 新增条目列表
+
+        Returns:
+            添加了个性化解读的 RSS 新增条目列表
+        """
+        if not rss_new_items:
+            return rss_new_items
+
+        # 检查个性化解读是否启用
+        ai_config = self.config.get("AI", {})
+        personalized_config = self.config.get("AI_ANALYSIS", {}).get("PERSONALIZED", {})
+        if not personalized_config.get("ENABLED", False):
+            return rss_new_items
+
+        try:
+            from trendradar.ai.personalized import PersonalizedAnalyzer, UserProfile
+
+            # 构建用户画像
+            profile_data = personalized_config.get("PROFILE", {})
+            user_profile = UserProfile(
+                roles=profile_data.get("ROLES", ["学生", "投资者", "公众"]),
+                career_fields=profile_data.get("CAREER_FIELDS", ["嵌入式Linux", "Linux应用开发"]),
+                investment_interests=profile_data.get("INVESTMENT_INTERESTS", ["科技股", "半导体"]),
+                focus_areas=profile_data.get("FOCUS_AREAS", ["技术趋势", "政策红利"]),
+                custom_description=profile_data.get("CUSTOM_DESCRIPTION", ""),
+            )
+
+            # 创建分析器
+            analyzer = PersonalizedAnalyzer(
+                ai_config=ai_config,
+                user_profile=user_profile,
+                language=personalized_config.get("LANGUAGE", "Chinese"),
+            )
+
+            # 批量分析
+            max_items = personalized_config.get("MAX_ITEMS", 5)
+            rss_new_items = analyzer.analyze_batch(rss_new_items, max_items=max_items)
+
+        except Exception as e:
+            print(f"[个性化解读] 处理失败: {e}")
+
+        return rss_new_items
+
     def dispatch_all(
         self,
         report_data: Dict,
@@ -200,6 +252,9 @@ class NotificationDispatcher:
         report_data, rss_items, rss_new_items = self._translate_content(
             report_data, rss_items, rss_new_items
         )
+
+        # 执行个性化解读（如果启用）
+        rss_new_items = self._enrich_personalized_insights(rss_new_items)
 
         # 飞书
         if self.config.get("FEISHU_WEBHOOK_URL"):
@@ -362,12 +417,12 @@ class NotificationDispatcher:
         display_regions: Optional[Dict] = None,
         standalone_data: Optional[Dict] = None,
     ) -> bool:
-        """发送到钉钉（多账号，支持热榜+RSS合并+AI分析+独立展示区）"""
+        """发送到钉钉（多账号，支持热榜+RSS合并+AI分析+独立展示区+增强模式）"""
         display_regions = display_regions or {}
         if not display_regions.get("HOTLIST", True):
             report_data = {"stats": [], "failed_ids": [], "new_titles": [], "id_to_name": {}}
 
-        return self._send_to_multi_accounts(
+        result = self._send_to_multi_accounts(
             channel_name="钉钉",
             config_value=self.config["DINGTALK_WEBHOOK_URL"],
             send_func=lambda url, account_label: send_to_dingtalk(
@@ -388,6 +443,54 @@ class NotificationDispatcher:
                 standalone_data=standalone_data if display_regions.get("STANDALONE", False) else None,
             ),
         )
+
+        if self.config.get("DINGTALK_ENHANCED_ENABLED") and rss_new_items:
+            self._send_dingtalk_enhanced(rss_new_items, report_type)
+
+        return result
+
+    def _send_dingtalk_enhanced(
+        self,
+        rss_new_items: List[Dict],
+        report_type: str,
+    ) -> None:
+        """发送钉钉增强通知（feedCard带图片）"""
+        webhook_url = self.config.get("DINGTALK_WEBHOOK_URL", "")
+        if not webhook_url:
+            return
+
+        secret = self.config.get("DINGTALK_SECRET", "")
+        max_items = self.config.get("DINGTALK_ENHANCED_MAX_ITEMS", 5)
+
+        news_items = []
+        for item in rss_new_items:
+            news_items.append({
+                "title": item.get("title", ""),
+                "url": item.get("url", ""),
+                "keyword": item.get("feed_name", ""),
+                "source": item.get("feed_id", ""),
+            })
+
+        if not news_items:
+            return
+
+        from trendradar.core.config import parse_multi_account_config, limit_accounts
+        accounts = parse_multi_account_config(webhook_url)
+        accounts = limit_accounts(accounts, self.max_accounts, "钉钉增强")
+
+        for url in accounts:
+            if url:
+                try:
+                    send_enhanced_dingtalk(
+                        webhook_url=url,
+                        secret=secret,
+                        news_items=news_items,
+                        api_key=None,
+                        report_type=report_type,
+                        max_items=max_items,
+                    )
+                except Exception as e:
+                    print(f"❌ 钉钉增强通知发送失败: {e}")
 
     def _send_wework(
         self,
