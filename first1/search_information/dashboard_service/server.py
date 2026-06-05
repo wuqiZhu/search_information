@@ -250,6 +250,63 @@ def api_health():
     })
 
 
+@app.route('/api/portal')
+def api_portal():
+    """统一门户 - 聚合所有关键数据"""
+    import datetime as dt
+    now = dt.datetime.now()
+    result = {
+        "timestamp": now.isoformat(),
+        "time": now.strftime("%Y-%m-%d %H:%M"),
+    }
+
+    # 1. 健康状态
+    result["health"] = {"status": "ok", "databases": {}}
+    for name, path in DB_PATHS.items():
+        result["health"]["databases"][name] = Path(path).exists() if path else False
+
+    # 2. 数据库统计
+    try:
+        invest_db = DB_PATHS.get("invest", "")
+        if invest_db and Path(invest_db).exists():
+            conn = sqlite3.connect(invest_db)
+            ns = conn.execute("SELECT COUNT(*) FROM news_sentiment").fetchone()[0]
+            fn = conn.execute("SELECT COUNT(*) FROM fund_nav").fetchone()[0]
+            fc = conn.execute("SELECT COUNT(DISTINCT fund_code) FROM fund_nav").fetchone()[0]
+            result["db_stats"] = {"情绪数据": ns, "净值数据": fn, "基金数量": fc}
+            conn.close()
+    except: pass
+
+    # 3. 新闻数据库
+    try:
+        nd = Path(DB_PATHS.get("trendradar", ""))
+        if nd.exists():
+            size = nd.stat().st_size
+            result["news_db"] = {"size_kb": round(size/1024), "date": nd.stem}
+    except: pass
+
+    # 4. 情绪指数
+    try:
+        sentiment_file = Path(str(DB_PATHS.get("invest", "")).replace("fund_data.db", "sentiment/sentiment_history.json"))
+        if sentiment_file.exists():
+            with open(sentiment_file, "r") as f:
+                hist = json.load(f)
+            if hist:
+                result["sentiment"] = hist[-1]
+                result["sentiment_trend"] = [{"date": x.get("date"), "index": x.get("index")} for x in hist[-7:]]
+    except: pass
+
+    # 5. 统一入口说明
+    result["commands"] = [
+        {"cmd": "python3 server_status.py", "label": "一键系统监控"},
+        {"cmd": "python3 buffer_stats.py", "label": "训练数据缓冲池"},
+        {"cmd": "python cli.py --digest", "label": "生成今日简报"},
+        {"cmd": "python cli.py --topic <话题>", "label": "查看话题线索"},
+    ]
+
+    return jsonify(result)
+
+
 @app.route('/api/archive')
 def api_archive():
     """获取归档统计"""
@@ -570,28 +627,201 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - 信息分析系统</title>
+    <title>投资情报系统</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; color: #333; }
-        .header { background: #1a1a2e; color: white; padding: 20px; text-align: center; }
-        .header h1 { font-size: 24px; }
-        .header p { opacity: 0.7; margin-top: 5px; }
-        .container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .stat-card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        .stat-card h3 { font-size: 14px; color: #666; margin-bottom: 10px; }
-        .stat-card .number { font-size: 32px; font-weight: bold; color: #1a1a2e; }
-        .stat-card .label { font-size: 12px; color: #999; margin-top: 5px; }
-        .section { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        .section h2 { font-size: 18px; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
-        .item { padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
-        .item:last-child { border-bottom: none; }
-        .item-title { font-weight: 500; }
-        .item-meta { font-size: 12px; color: #999; margin-top: 5px; }
-        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
-        .badge-hot { background: #fee; color: #c00; }
-        .badge-score { background: #efe; color: #060; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f0f1a; color: #e0e0e0; }
+        .header { background: linear-gradient(135deg, #1a1a2e, #16213e); padding: 24px 20px; border-bottom: 1px solid #2a2a4a; }
+        .header h1 { font-size: 20px; color: #fff; }
+        .header .sub { font-size: 13px; color: #8888aa; margin-top: 4px; }
+        .header .time { font-size: 12px; color: #666; float: right; margin-top: -20px; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 16px; }
+
+        /* 状态栏 */
+        .status-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+        .status-item { background: #1a1a2e; border-radius: 8px; padding: 12px 16px; flex: 1; min-width: 120px; border: 1px solid #2a2a4a; }
+        .status-item .val { font-size: 22px; font-weight: 700; }
+        .status-item .lbl { font-size: 11px; color: #8888aa; margin-top: 2px; }
+        .green { color: #4ade80; } .yellow { color: #fbbf24; } .red { color: #f87171; } .blue { color: #60a5fa; }
+
+        /* 卡片网格 */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-bottom: 16px; }
+        .card { background: #1a1a2e; border-radius: 10px; padding: 16px; border: 1px solid #2a2a4a; transition: 0.2s; }
+        .card:hover { border-color: #4a4a7a; }
+        .card h3 { font-size: 13px; color: #8888aa; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card .big { font-size: 28px; font-weight: 700; }
+        .card .row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px solid #222244; }
+        .card .row:last-child { border: none; }
+        .card .tag { font-size: 11px; padding: 2px 8px; border-radius: 4px; }
+        .tag-hot { background: #3b1a1a; color: #f87171; }
+        .tag-cold { background: #1a1a3b; color: #60a5fa; }
+        .tag-warn { background: #3b3a1a; color: #fbbf24; }
+
+        /* 命令列表 */
+        .cmd-list { background: #1a1a2e; border-radius: 10px; padding: 16px; border: 1px solid #2a2a4a; margin-bottom: 16px; }
+        .cmd-list h3 { font-size: 13px; color: #8888aa; margin-bottom: 10px; text-transform: uppercase; }
+        .cmd-item { padding: 8px 0; border-bottom: 1px solid #222244; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+        .cmd-item:last-child { border: none; }
+        .cmd-item code { background: #222244; padding: 2px 8px; border-radius: 4px; font-size: 12px; color: #4ade80; }
+        .cmd-item .desc { color: #ccc; }
+
+        /* 话题线索 */
+        .topic { display: inline-block; padding: 4px 12px; margin: 3px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+        .topic-red { background: #3b1a1a; color: #f87171; border: 1px solid #5a2a2a; }
+        .topic-yellow { background: #3b3a1a; color: #fbbf24; border: 1px solid #5a5a2a; }
+        .topic-green { background: #1a3b1a; color: #4ade80; border: 1px solid #2a5a2a; }
+        .topic-blue { background: #1a1a3b; color: #60a5fa; border: 1px solid #2a2a5a; }
+        .topic-muted { background: #222244; color: #8888aa; border: 1px solid #333355; }
+
+        /* 图表容器 */
+        .chart-box { background: #1a1a2e; border-radius: 10px; padding: 16px; border: 1px solid #2a2a4a; margin-bottom: 16px; min-height: 200px; }
+
+        .footer { text-align: center; padding: 20px; font-size: 11px; color: #555; }
+
+        @media (max-width: 600px) {
+            .status-item { min-width: calc(50% - 5px); }
+            .grid { grid-template-columns: 1fr; }
+            .header .time { float: none; display: block; margin-top: 4px; }
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <h1>📡 投资情报系统</h1>
+    <div class="sub">采集 · 分析 · 决策 · 学习</div>
+    <div class="time" id="headerTime"></div>
+</div>
+<div class="container">
+
+    <!-- 状态栏 -->
+    <div class="status-bar" id="statusBar">
+        <div class="status-item"><div class="val green" id="sSentiment">--</div><div class="lbl">情绪指数</div></div>
+        <div class="status-item"><div class="val blue" id="sNews">--</div><div class="lbl">今日新闻</div></div>
+        <div class="status-item"><div class="val yellow" id="sFunds">--</div><div class="lbl">基金跟踪</div></div>
+        <div class="status-item"><div class="val" id="sHealth" style="color:#4ade80">✓</div><div class="lbl">系统状态</div></div>
+    </div>
+
+    <!-- 核心数据 -->
+    <div class="grid" id="gridData">
+        <div class="card"><h3>📈 情绪指数</h3><div id="cardSentiment" class="big">加载中...</div></div>
+        <div class="card"><h3>🗄️ 数据库</h3><div id="cardDB">加载中...</div></div>
+        <div class="card"><h3>📰 最新数据</h3><div id="cardNews">加载中...</div></div>
+    </div>
+
+    <!-- 话题线索 -->
+    <div class="card" style="margin-bottom:16px">
+        <h3>🔗 话题线索</h3>
+        <div id="topicCloud">
+            <span class="topic topic-red">半导体 🔴</span>
+            <span class="topic topic-yellow">美联储 🟡</span>
+            <span class="topic topic-green">新能源 ✅</span>
+            <span class="topic topic-blue">AI ⚪</span>
+            <span class="topic topic-yellow">房地产 🟡</span>
+            <span class="topic topic-muted">消费</span>
+            <span class="topic topic-red">地缘政治 🔴</span>
+            <span class="topic topic-blue">医药</span>
+            <span class="topic topic-green">光伏</span>
+            <span class="topic topic-muted">更多+</span>
+        </div>
+        <div style="font-size:12px;color:#666;margin-top:8px">点击话题查看关联信息链 · 颜色 = 当前关注度</div>
+    </div>
+
+    <!-- 近期趋势 -->
+    <div class="chart-box">
+        <h3 style="font-size:13px;color:#8888aa;margin-bottom:10px;">📊 情绪趋势（近7天）</h3>
+        <div id="trendChart" style="height:120px;display:flex;align-items:flex-end;gap:8px;padding:0 4px;"></div>
+    </div>
+
+    <!-- 统一命令入口 -->
+    <div class="cmd-list">
+        <h3>🎯 快捷操作</h3>
+        <div class="cmd-item"><span class="desc">📊 一键监控</span><code>python3 server_status.py</code></div>
+        <div class="cmd-item"><span class="desc">📦 缓冲池状态</span><code>python3 buffer_stats.py</code></div>
+        <div class="cmd-item"><span class="desc">📝 生成今日简报</span><code>python cli.py --digest</code></div>
+        <div class="cmd-item"><span class="desc">🔗 查看话题线索</span><code>python cli.py --topic 半导体</code></div>
+    </div>
+
+    <div class="footer">投资有风险，过往业绩不代表未来表现 · 数据仅供参考</div>
+</div>
+
+<script>
+async function loadPortal() {
+    try {
+        let r = await fetch('/api/portal');
+        let d = await r.json();
+        document.getElementById('headerTime').textContent = d.time || '';
+
+        // 状态栏
+        let sentiment = d.sentiment || {};
+        document.getElementById('sSentiment').textContent = sentiment.index != null ? sentiment.index : '--';
+        document.getElementById('sSentiment').className = 'val ' + (
+            sentiment.index > 60 ? 'green' : sentiment.index > 40 ? 'yellow' : 'red'
+        );
+
+        let db = d.db_stats || {};
+        document.getElementById('sNews').textContent = db['情绪数据'] || '--';
+        document.getElementById('sFunds').textContent = db['基金数量'] || '--';
+
+        // 情绪卡片
+        let cardS = document.getElementById('cardSentiment');
+        if (sentiment.index != null) {
+            let level = sentiment.level || '';
+            let trend = sentiment.trend || '';
+            cardS.innerHTML = `${sentiment.index} <span style="font-size:14px;color:#888">${level}</span>
+                <div style="font-size:12px;color:#666;margin-top:4px">趋势: ${trend} · ${sentiment.date || ''}</div>`;
+        }
+
+        // 数据库卡片
+        let cardDB = document.getElementById('cardDB');
+        let dbHTML = '';
+        for (let k in db) { dbHTML += `<div class="row"><span>${k}</span><span>${db[k]}</span></div>`; }
+        cardDB.innerHTML = dbHTML || '暂无数据';
+
+        // 新闻数据卡片
+        let nd = d.news_db || {};
+        let cardNews = document.getElementById('cardNews');
+        cardNews.innerHTML = nd.date ? `<div class="row"><span>最新数据库</span><span>${nd.date}</span></div>
+            <div class="row"><span>大小</span><span>${nd.size_kb} KB</span></div>` : '暂无数据';
+
+        // 趋势图
+        let trend = d.sentiment_trend || [];
+        let chartEl = document.getElementById('trendChart');
+        if (trend.length > 0) {
+            let maxV = Math.max(...trend.map(t => t.index || 0), 60);
+            let minV = Math.min(...trend.map(t => t.index || 0), 40);
+            let range = Math.max(maxV - minV, 10);
+            chartEl.innerHTML = trend.map(t => {
+                let h = ((t.index || 50) - minV) / range * 100;
+                let color = t.index > 60 ? '#4ade80' : t.index > 40 ? '#fbbf24' : '#f87171';
+                return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;">
+                    <div style="height:${h}%;background:${color};width:60%;border-radius:4px 4px 0 0;min-height:4px;transition:0.3s;"></div>
+                    <span style="font-size:10px;color:#666;margin-top:4px">${(t.date || '').slice(-5)}</span>
+                    <span style="font-size:10px;color:#aaa">${t.index || ''}</span>
+                </div>`;
+            }).join('');
+        } else {
+            chartEl.innerHTML = '<div style="color:#666;padding:20px;text-align:center">暂无趋势数据</div>';
+        }
+
+    } catch(e) {
+        document.getElementById('statusBar').innerHTML =
+            `<div class="status-item"><div class="val red">!</div><div class="lbl">加载失败: ${e.message}</div></div>`;
+    }
+}
+
+// 话题点击
+document.getElementById('topicCloud').addEventListener('click', function(e) {
+    if (e.target.classList.contains('topic')) {
+        let topic = e.target.textContent.trim().replace(/[🔴🟡✅⚪]$/, '').trim();
+        alert('话题「' + topic + '」的详细信息将在 cli.py --topic 中查看\n\n命令: python cli.py --topic ' + topic);
+    }
+});
+
+loadPortal();
+setInterval(loadPortal, 30000);
+</script>
+</body>
+</html>"""
         .badge-source { background: #eef; color: #006; }
         .empty { text-align: center; padding: 40px; color: #999; }
         .refresh-btn { background: #1a1a2e; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }

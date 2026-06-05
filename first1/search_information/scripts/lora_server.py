@@ -114,7 +114,6 @@ def health():
         "available_adapters": [
             a["task"] for a in manager.list_adapters() if a["exists"]
         ],
-        "device": getattr(manager._model, "device", "unknown") if manager._model else "none",
     })
 
 

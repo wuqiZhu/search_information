@@ -470,6 +470,41 @@ int main(int argc, char **argv) {
     http_server_register_api("/api/led/control", api_control_led);
     http_server_register_api("/api/system", api_get_system_status);
 
+    /* 注册扩展API处理函数 */
+    extern int api_get_sensor_status(const char *, const char *, const char *, char *, int);
+    extern int api_get_device_info(const char *, const char *, const char *, char *, int);
+    extern int api_camera_capture(const char *, const char *, const char *, char *, int);
+    extern int api_camera_list(const char *, const char *, const char *, char *, int);
+    extern int api_camera_view(const char *, const char *, const char *, char *, int);
+    extern int api_ota_upgrade(const char *, const char *, const char *, char *, int);
+    extern int api_ota_status(const char *, const char *, const char *, char *, int);
+    extern int api_ota_rollback(const char *, const char *, const char *, char *, int);
+    extern int api_config_get(const char *, const char *, const char *, char *, int);
+    extern int api_config_update(const char *, const char *, const char *, char *, int);
+    extern int api_get_logs(const char *, const char *, const char *, char *, int);
+    extern int api_login(const char *, const char *, const char *, char *, int);
+    extern int api_logout(const char *, const char *, const char *, char *, int);
+    extern int api_auth_check(const char *, const char *, const char *, char *, int);
+    extern int api_change_password(const char *, const char *, const char *, char *, int);
+    extern int api_export_data(const char *, const char *, const char *, char *, int);
+
+    http_server_register_api("/api/sensor_status", api_get_sensor_status);
+    http_server_register_api("/api/device_info", api_get_device_info);
+    http_server_register_api("/api/camera/capture", api_camera_capture);
+    http_server_register_api("/api/camera/list", api_camera_list);
+    http_server_register_api("/api/camera/view", api_camera_view);
+    http_server_register_api("/api/ota/upgrade", api_ota_upgrade);
+    http_server_register_api("/api/ota/status", api_ota_status);
+    http_server_register_api("/api/ota/rollback", api_ota_rollback);
+    http_server_register_api("/api/config/get", api_config_get);
+    http_server_register_api("/api/config/update", api_config_update);
+    http_server_register_api("/api/logs", api_get_logs);
+    http_server_register_api("/api/auth/login", api_login);
+    http_server_register_api("/api/auth/logout", api_logout);
+    http_server_register_api("/api/auth/check", api_auth_check);
+    http_server_register_api("/api/auth/change_password", api_change_password);
+    http_server_register_api("/api/export", api_export_data);
+
     /* 启动HTTP服务器 */
     http_ret = http_server_start();
     if (http_ret != HTTP_OK) {

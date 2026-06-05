@@ -80,7 +80,8 @@ def train_lora(task: str, data_dir: str, output_dir: str,
                base_model: str = DEFAULT_BASE_MODEL,
                num_epochs: int = 3, batch_size: int = 8,
                lora_r: int = 16, lora_alpha: int = 32,
-               learning_rate: float = 2e-4):
+               learning_rate: float = 2e-4,
+               max_samples: int = 0):
     """
     训练 LoRA adapter。
 
@@ -175,6 +176,15 @@ def train_lora(task: str, data_dir: str, output_dir: str,
         )
         encodings["labels"] = encodings["input_ids"].copy()
         return encodings
+
+    logger.info("加载训练数据...")
+    train_data, val_data = load_data(data_dir, task)
+
+    if max_samples and len(train_data) > max_samples:
+        import random
+        random.shuffle(train_data)
+        train_data = train_data[:max_samples]
+        logger.info(f"  采样至 {max_samples} 条")
 
     logger.info("格式化数据...")
     train_samples = [format_sample(s) for s in train_data]
@@ -336,6 +346,8 @@ def main():
     train_p.add_argument("--output-dir", required=True)
     train_p.add_argument("--base-model", default=DEFAULT_BASE_MODEL)
     train_p.add_argument("--epochs", type=int, default=3)
+    train_p.add_argument("--max-samples", type=int, default=0,
+                         help="最大训练样本数（0=全部）")
     train_p.add_argument("--batch-size", type=int, default=8)
     train_p.add_argument("--lr", type=float, default=2e-4)
     train_p.add_argument("--lora-r", type=int, default=16)

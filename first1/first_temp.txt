@@ -1,0 +1,79 @@
+PS C:\Users\zhuxiangbo\Desktop\project\first1> git add invest/scripts/prediction_registry/ -A
+PS C:\Users\zhuxiangbo\Desktop\project\first1> git status
+
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add/rm <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+        deleted:    ../Feedback_and_Learning
+        deleted:    ../analyse_information/.env.example
+        deleted:    ../analyse_information/.gitignore
+        deleted:    ../analyse_information/Dockerfile
+        deleted:    ../analyse_information/analyzer/__init__.py
+        deleted:    ../analyse_information/analyzer/ai_analyzer.py
+        deleted:    ../analyse_information/analyzer/config.yaml
+        deleted:    ../analyse_information/analyzer/db.py
+        "../\347\211\210\346\234\2543/lesson6/sensor_manager.c"
+        "../\347\211\210\346\234\2543/lesson6/sensor_manager.h"
+        "../\347\211\210\346\234\2543/lesson6/system_monitor.c"
+        "../\347\211\210\346\234\2543/lesson6/system_monitor.h"
+        "../\347\211\210\346\234\2543/server_info.png"
+        "../\347\211\210\346\234\2543/shared_lib/"
+        "../\347\211\210\346\234\2543/snapshot.sh"
+        "../\347\211\210\346\234\2543/temp.txt"
+
+no changes added to commit (use "git add" and/or "git commit -a")
+
+PS C:\Users\zhuxiangbo\Desktop\project\first1> git commit -m "feat: 预测注册表系统（插旗+验证+统计）"
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add/rm <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+        deleted:    ../Feedback_and_Learning
+        deleted:    ../analyse_information/.env.example
+        deleted:    ../analyse_information/.gitignore
+        deleted:    ../analyse_information/Dockerfile
+        deleted:    ../analyse_information/analyzer/__init__.py
+        deleted:    ../analyse_information/analyzer/ai_analyzer.py
+        deleted:    ../analyse_information/analyzer/config.yaml
+        deleted:    ../analyse_information/analyzer/db.py
+        deleted:    ../analyse_information/analyzer/defuddle/__init__.py
+        deleted:    ../analyse_information/analyzer/defuddle/extractor.py
+camera_manager.h"
+        "../\347\211\210\346\234\2543/lesson5/rpc_server/test5.jpg"
+        "../\347\211\210\346\234\2543/lesson6/camera_manager.c"
+        "../\347\211\210\346\234\2543/lesson6/camera_manager.h"
+        "../\347\211\210\346\234\2543/lesson6/crypto_utils.c"
+        "../\347\211\210\346\234\2543/lesson6/crypto_utils.h"
+        "../\347\211\210\346\234\2543/lesson6/device_auth.c"
+        "../\347\211\210\346\234\2543/lesson6/device_auth.h"
+        "../\347\211\210\346\234\2543/lesson6/device_discovery.c"
+        "../\347\211\210\346\234\2543/lesson6/device_discovery.h"
+        "../\347\211\210\346\234\2543/lesson6/memory_pool.c"
+        "../\347\211\210\346\234\2543/lesson6/memory_pool.h"
+        "../\347\211\210\346\234\2543/lesson6/msg_queue.c"
+        "../\347\211\210\346\234\2543/lesson6/msg_queue.h"
+        "../\347\211\210\346\234\2543/lesson6/ota_manager.c"
+        "../\347\211\210\346\234\2543/lesson6/ota_manager.h"
+        "../\347\211\210\346\234\2543/lesson6/perf_monitor.c"
+        "../\347\211\210\346\234\2543/lesson6/perf_monitor.h"
+        "../\347\211\210\346\234\2543/lesson6/plugin_manager.c"
+        "../\347\211\210\346\234\2543/lesson6/plugin_manager.h"
+        "../\347\211\210\346\234\2543/lesson6/security_audit.c"
+        "../\347\211\210\346\234\2543/lesson6/security_audit.h"
+        "../\347\211\210\346\234\2543/lesson6/sensor_manager.c"
+        "../\347\211\210\346\234\2543/lesson6/sensor_manager.h"
+        "../\347\211\210\346\234\2543/lesson6/system_monitor.c"
+        "../\347\211\210\346\234\2543/lesson6/system_monitor.h"
+        "../\347\211\210\346\234\2543/server_info.png"
+        "../\347\211\210\346\234\2543/shared_lib/"
+        "../\347\211\210\346\234\2543/snapshot.sh"
+        "../\347\211\210\346\234\2543/temp.txt"
+
+no changes added to commit (use "git add" and/or "git commit -a")
+PS C:\Users\zhuxiangbo\Desktop\project\first1> git push
+Everything up-to-date

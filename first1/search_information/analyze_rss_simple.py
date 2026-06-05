@@ -1,0 +1,25 @@
+from ssh_helper import get_ssh_client
+
+ssh = get_ssh_client()
+
+def run(cmd, label=""):
+    if label:
+        print(f'\n{"="*60}')
+        print(f'>>> {label}')
+        print(f'{"="*60}')
+    stdin, stdout, stderr = ssh.exec_command(cmd, timeout=120)
+    out = stdout.read().decode()
+    err = stderr.read().decode()
+    if out:
+        print(out.strip())
+    if err:
+        print(f'[STDERR] {err.strip()}')
+    return out, err
+
+# 统计各 RSS 源的文章数量
+run('docker exec analyser python3 -c "import sqlite3; conn=sqlite3.connect(\'/app/data/search_information/rss/2026-05-27.db\'); cursor=conn.execute(\'SELECT feed_id, COUNT(*) as count FROM rss_items GROUP BY feed_id ORDER BY count DESC\'); [print(f\'{r[0]}: {r[1]} 篇\') for r in cursor.fetchall()]; conn.close()"', 'RSS 源文章数量统计')
+
+# 统计 TrendRadar 各平台的新闻数量
+run('docker exec analyser python3 -c "import sqlite3; conn=sqlite3.connect(\'/app/data/search_information/news/2026-05-27.db\'); cursor=conn.execute(\'SELECT platform_id, COUNT(*) as count FROM news_items GROUP BY platform_id ORDER BY count DESC\'); [print(f\'{r[0]}: {r[1]} 条\') for r in cursor.fetchall()]; conn.close()"', 'TrendRadar 各平台新闻数量')
+
+ssh.close()

@@ -95,14 +95,23 @@ class LoraManager:
         logger.info(f"[LoRA] 加载基座模型: {self.base_model_path} ...")
         t0 = time.time()
 
-        # 4-bit 量化加载以节省显存
-        self._model = AutoModelForCausalLM.from_pretrained(
-            self.base_model_path,
+        # 4-bit 量化加载以节省显存；不支持时回退到普通加载
+        import torch
+        load_kwargs = dict(
             torch_dtype=torch.float16,
             device_map=self.device if self.device != "auto" else "auto",
-            load_in_4bit=True,
             trust_remote_code=True,
         )
+        try:
+            # 先试 4-bit（GPU 环境）
+            self._model = AutoModelForCausalLM.from_pretrained(
+                self.base_model_path, load_in_4bit=True, **load_kwargs
+            )
+        except (TypeError, RuntimeError, ImportError):
+            logger.warning("[LoRA] 4-bit 加载失败，回退到 float16")
+            self._model = AutoModelForCausalLM.from_pretrained(
+                self.base_model_path, **load_kwargs
+            )
         self._tokenizer = AutoTokenizer.from_pretrained(
             self.base_model_path, trust_remote_code=True
         )

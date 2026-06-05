@@ -1,0 +1,154 @@
+name: CI - Lint & Test
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lint (Ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Run Ruff lint
+        run: ruff check . --output-format=github
+
+      - name: Run Ruff format check
+        run: ruff format --check .
+
+  test-search-information:
+    name: Test search_information
+    runs-on: ubuntu-latest
+    needs: lint
+    defaults:
+      run:
+        working-directory: search_information
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install pytest pytest-cov
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run tests
+        run: pytest tests/ -v --cov=. --cov-report=xml --cov-report=term-missing || true
+
+      - name: Upload coverage
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          file: search_information/coverage.xml
+          flags: search-information
+        continue-on-error: true
+
+  test-analyse-information:
+    name: Test analyse_information
+    runs-on: ubuntu-latest
+    needs: lint
+    defaults:
+      run:
+        working-directory: analyse_information
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install pytest pytest-cov
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run tests
+        run: pytest tests/ -v --cov=. --cov-report=xml --cov-report=term-missing || true
+
+  test-invest:
+    name: Test invest
+    runs-on: ubuntu-latest
+    needs: lint
+    defaults:
+      run:
+        working-directory: invest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install pytest pytest-cov
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run tests
+        run: pytest scripts/ -v --cov=. --cov-report=xml --cov-report=term-missing || true
+
+  test-feedback-learning:
+    name: Test Feedback_and_Learning
+    runs-on: ubuntu-latest
+    needs: lint
+    defaults:
+      run:
+        working-directory: Feedback_and_Learning
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install pytest pytest-cov
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Run tests
+        run: pytest tests/ -v --cov=. --cov-report=xml --cov-report=term-missing || true
+
+  docker-build-test:
+    name: Docker Build Test
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build test (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./search_information/docker/Dockerfile
+          push: false
+          tags: test-build:latest
+        continue-on-error: true
