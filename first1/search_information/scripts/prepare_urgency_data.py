@@ -44,11 +44,11 @@ def extract_rank_trajectories(db_path: str, min_samples: int = 3):
         date_str = os.path.basename(db_path).replace(".db", "")
 
         query = """
-            SELECT rh.rank, rh.platform_id, rh.created_at,
+            SELECT rh.rank, ni.platform_id, rh.crawl_time,
                    ni.title, ni.url
             FROM rank_history rh
-            JOIN news_items ni ON rh.news_id = ni.id
-            ORDER BY rh.platform_id, ni.url, rh.created_at
+            JOIN news_items ni ON rh.news_item_id = ni.id
+            ORDER BY ni.platform_id, ni.url, rh.crawl_time
         """
         rows = cursor.execute(query).fetchall()
         conn.close()
